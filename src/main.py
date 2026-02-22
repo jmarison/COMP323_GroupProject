@@ -1,12 +1,12 @@
 import pygame
 
-from sprites_collisions.game import Game
+from main.game import Game
 
 
 def main() -> None:
     pygame.init()
     pygame.mixer.init()
-    pygame.display.set_caption("Jacob and Gabe - Group Project")
+    pygame.display.set_caption("Temp Name")
 
     game = Game()
     clock = pygame.time.Clock()
