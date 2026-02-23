@@ -88,14 +88,14 @@ class Player(pygame.sprite.Sprite):
 
         # --- player stats ---
         self.maxHealth: int = 200
-        self.currentHealth: int  = self.maxHealth
+        self.currHealth: int  = self.maxHealth
         self.speed : int = 200
 
         self.controls = ControlScheme(scheme_name)
 
         # --- weapons ---
         self.weaponInv: list[Weapon] = []
-        self.currentWeaponIndex: int = 0
+        self.currWeaponIndex: int = 0
 
         # --- items ---
         self.items: list[Item] = []
@@ -140,11 +140,11 @@ class Player(pygame.sprite.Sprite):
     
     def _cycle_weapon(self, step: int) -> None:
         if self.weaponInv:
-            self.currentWeaponIndex = (self.currentWeaponIndex + step) % len(self.weaponInv)
+            self.currWeaponIndex = (self.currWeaponIndex + step) % len(self.weaponInv)
 
     def _select_weapon(self, index: int) -> None:
         if 0 <= index < len(self.weaponInv):
-            self.currentWeaponIndex = index
+            self.currWeaponIndex = index
     
     def add_weapon(self, weapon: Weapon) -> bool:
         if len(self.weaponInv) >= self.MAX_WEAPONS:
@@ -154,18 +154,18 @@ class Player(pygame.sprite.Sprite):
     
     @property
     def current_weapon(self) -> Weapon | None:
-        return self.weaponInv[self.currentWeaponIndex] if self.weaponInv else None
+        return self.weaponInv[self.currWeaponIndex] if self.weaponInv else None
     
     # --- Health ---
     def take_damage(self, amount: int) -> None:
-        self.currentHealth = max(0, self.currentHealth - amount)
+        self.currHealth = max(0, self.currHealth - amount)
 
     def heal(self, amount: int) -> None:
-        self.currentHealth = min(self.maxHealth, self.currentHealth + amount)
+        self.currHealth = min(self.maxHealth, self.currHealth + amount)
 
     @property
     def is_dead(self) -> bool:
-        return self.currentHealth <= 0
+        return self.currHealth <= 0
     
     def _reset(self) -> None:
         pass
