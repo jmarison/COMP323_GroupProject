@@ -1,4 +1,10 @@
 from __future__ import annotations
+import random
+from collections import deque
+from typing import Optional
+import pygame
+from main.room import Room, RoomType, Direction
+
 """
 * Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
   and a configurable number of NORMAL rooms.
@@ -15,16 +21,6 @@ To use:
     dungeon.draw(screen, debug=False)
     dungeon.update(player)             
 """
-
-import random
-from collections import deque
-from typing import Optional
-
-import pygame
-
-from main.room import Room, RoomType, Direction
-
-
 
 #  Tunables                                                                    
 
