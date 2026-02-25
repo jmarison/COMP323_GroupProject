@@ -1,30 +1,20 @@
 from __future__ import annotations
 """
-dungeon_generator.py
-====================
-Procedurally generates a dungeon made of connected Room objects on a grid.
-
-Guarantees
-----------
 * Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
   and a configurable number of NORMAL rooms.
 * The BOSS room has exactly ONE door (entrance only).
 * START and BOSS rooms are placed as far apart as possible on the grid.
-* Only one room is ever "active" / displayed at a time.
-* Rooms connect through doors; walking into a loading zone triggers a transition.
+* Only one room is ever active / displayed at a time.
+* Rooms connect through doors which is loading zone triggered by player walking through.
 
-Typical usage
--------------
-    from main.dungeon_generator import DungeonGenerator
-
-    gen   = DungeonGenerator(seed=12345, num_normal_rooms=6)
+To use:
+    gen   = DungeonGenerator(seed=12345, num_normal_rooms=8)
     dungeon = gen.generate()            # returns a Dungeon instance
 
     # In game loop:
     dungeon.draw(screen, debug=False)
-    dungeon.update(player)              # checks transitions
+    dungeon.update(player)             
 """
-
 
 import random
 from collections import deque
@@ -35,9 +25,9 @@ import pygame
 from main.room import Room, RoomType, Direction
 
 
-# --------------------------------------------------------------------------- #
-#  Tunables                                                                    #
-# --------------------------------------------------------------------------- #
+
+#  Tunables                                                                    
+
 GRID_COLS        = 8
 GRID_ROWS        = 8
 DEFAULT_NORMALS  = 8     # normal rooms in addition to start / boss / mini-game
@@ -69,7 +59,8 @@ class Dungeon:
     @property
     def current_room(self) -> Room:
         return self.rooms[self.current_id]
-# --- Update ---
+    
+    # --- Update ---
     def update(self, player) -> bool:
         result = self.current_room.check_transition(player.rect)
         if result is None:
@@ -113,8 +104,6 @@ class Dungeon:
 
 class DungeonGenerator:
     """
-    Generates a Dungeon procedurally.
-
     Parameters
     ----------
     seed             : RNG seed (int or None for random)
@@ -169,13 +158,13 @@ class DungeonGenerator:
             )
 
         
-        #   grow a random spanning tree of grid cells via random walk 
+        # grow a random spanning tree of grid cells via random walk 
         
         occupied: dict[tuple[int, int], int] = {}   # grid_pos -> room_id
         adjacency: list[tuple[int, int]] = []        # (room_id_a, room_id_b)
         room_id_counter = 0
 
-        # Pick a random starting cell
+        # pick a random starting cell
         start_col = self.rng.randrange(self.grid_cols)
         start_row = self.rng.randrange(self.grid_rows)
         start_pos = (start_col, start_row)
@@ -205,7 +194,7 @@ class DungeonGenerator:
         all_ids   = list(range(total_rooms))
         pos_by_id = {v: k for k, v in occupied.items()}
 
-        # Build a neighbors map from adjacency
+        #map used for adjacency of rooms
         neighbors_of: dict[int, list[int]] = {i: [] for i in all_ids}
         for a, b in adjacency:
             neighbors_of[a].append(b)
@@ -218,9 +207,8 @@ class DungeonGenerator:
 
         start_candidate, boss_candidate = farthest_pair
 
-        # Boss room must have degree 1 in the spanning tree so it only has
-        # one neighbor/one door.  If neither end of the farthest pair is
-        # a leaf, look for another leaf to be the boss.
+        # Boss room must have degree of 1 so it only has one neighbor/one door  
+        # If neither end of the farthest pair is a leaf, look for another leaf to be the boss room
 
         def is_leaf(rid: int) -> bool:
             return len(neighbors_of[rid]) == 1
