@@ -94,7 +94,7 @@ class Room:
         self.screen_w  = screen_w
         self.screen_h  = screen_h
 
-        self.doors: dict[Direction, Door] = {}   # direction → Door
+        self.doors: dict[Direction, Door] = {}   
         self._surface: Optional[pygame.Surface] = None
         
     def add_door(self, direction: Direction, target_room_id: int) -> None:
@@ -105,7 +105,7 @@ class Room:
     def check_transition(self, player_rect: pygame.Rect) -> Optional[tuple[Direction, int]]:
        
         #Returns (direction, target_room_id) if the player's rect overlaps any
-        #loading zone, otherwise None.
+        #loading zone, otherwise None
       
         for direction, door in self.doors.items():
             if player_rect.colliderect(door.loading_zone):
@@ -125,10 +125,10 @@ class Room:
 
         wt = WALL_THICKNESS
         wall_rects = [
-            pygame.Rect(0,                       0,                       self.screen_w, wt),   # top
-            pygame.Rect(0,                       self.screen_h - wt,      self.screen_w, wt),   # bottom
-            pygame.Rect(0,                       0,                       wt,            self.screen_h),  # left
-            pygame.Rect(self.screen_w - wt,      0,                       wt,            self.screen_h),  # right
+            pygame.Rect(0,0,self.screen_w, wt),   # top
+            pygame.Rect(0,self.screen_h - wt,self.screen_w, wt),   # bottom
+            pygame.Rect(0,0,wt,self.screen_h),  # left
+            pygame.Rect(self.screen_w - wt,0, wt,self.screen_h),  # right
         ]
         for r in wall_rects:
             pygame.draw.rect(surf, COL_WALL, r)
