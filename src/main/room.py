@@ -66,16 +66,16 @@ class Door:
         wt = WALL_THICKNESS
 
         if self.direction == Direction.NORTH:
-            self.rect         = pygame.Rect(cx - ds // 2, 0,        ds, wt)
-            self.loading_zone = pygame.Rect(cx - ds // 2, 0,        ds, lz)
+            self.rect = pygame.Rect(cx - ds // 2, 0,ds, wt)
+            self.loading_zone = pygame.Rect(cx - ds // 2, 0, ds, lz)
         elif self.direction == Direction.SOUTH:
-            self.rect         = pygame.Rect(cx - ds // 2, screen_h - wt, ds, wt)
+            self.rect = pygame.Rect(cx - ds // 2, screen_h - wt, ds, wt)
             self.loading_zone = pygame.Rect(cx - ds // 2, screen_h - lz, ds, lz)
         elif self.direction == Direction.WEST:
-            self.rect         = pygame.Rect(0,             cy - ds // 2, wt, ds)
-            self.loading_zone = pygame.Rect(0,             cy - ds // 2, lz, ds)
+            self.rect = pygame.Rect(0,cy - ds // 2, wt, ds)
+            self.loading_zone = pygame.Rect(0,cy - ds // 2, lz, ds)
         elif self.direction == Direction.EAST:
-            self.rect         = pygame.Rect(screen_w - wt, cy - ds // 2, wt, ds)
+            self.rect = pygame.Rect(screen_w - wt, cy - ds // 2, wt, ds)
             self.loading_zone = pygame.Rect(screen_w - lz, cy - ds // 2, lz, ds)
 
 
@@ -135,7 +135,7 @@ class Room:
 
       
         for door in self.doors.values():
-            pygame.draw.rect(surf, floor_col,    door.rect)          # erase wall
+            pygame.draw.rect(surf, floor_col,    door.rect)  # erase wall
             pygame.draw.rect(surf, COL_DOOR_FRAME, door.rect, 2)    # frame outline
 
         if pygame.font.get_init():
