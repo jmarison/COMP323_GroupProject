@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
+from main.entities import Wall, Hazard, Enemy
 import pygame
 
 
@@ -87,6 +88,9 @@ class Room:
         grid_pos:  tuple[int, int],
         screen_w:  int = ROOM_W,
         screen_h:  int = ROOM_H,
+        walls:     list[Wall]   = None,
+        hazards:   list[Hazard] = None,
+        enemies:   list[Enemy]  = None,
     ) -> None:
         self.id        = room_id
         self.type      = room_type
@@ -94,8 +98,13 @@ class Room:
         self.screen_w  = screen_w
         self.screen_h  = screen_h
 
-        self.doors: dict[Direction, Door] = {}   
+        self.walls   : list[Wall]   = walls   or []
+        self.hazards : list[Hazard] = hazards or []
+        self.enemies : list[Enemy]  = enemies or []
+
+        self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
+
         
     def add_door(self, direction: Direction, target_room_id: int) -> None:
         door = Door(direction=direction, target_room_id=target_room_id)
@@ -111,6 +120,15 @@ class Room:
             if player_rect.colliderect(door.loading_zone):
                 return direction, door.target_room_id
         return None
+
+    def update(self, dt: float, player) -> None:
+        player_pos = pygame.Vector2(player.rect.center)
+        for enemy in self.enemies:
+            enemy.update(dt, player_pos)
+
+        for hazard in self.hazards:
+            if hazard.collides(player.rect):
+                player.take_damage(hazard.damage)
 
 
     def _build_surface(self) -> pygame.Surface:
@@ -133,6 +151,8 @@ class Room:
         for r in wall_rects:
             pygame.draw.rect(surf, COL_WALL, r)
 
+        for wall in self.walls:
+                    wall.draw(surf)
       
         for door in self.doors.values():
             pygame.draw.rect(surf, floor_col,    door.rect)  # erase wall
@@ -151,6 +171,11 @@ class Room:
             self._surface = self._build_surface()
         surface.blit(self._surface, (0, 0))
 
+        for hazard in self.hazards:
+            hazard.draw(surface)
+        for enemy in self.enemies:
+            enemy.draw(surface)
+
         if debug:
             overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)
             for door in self.doors.values():
@@ -164,4 +189,7 @@ class Room:
     #  Helpers                                                                 
     def __repr__(self) -> str:
         doors = [d.name for d in self.doors]
-        return f"Room(id={self.id}, type={self.type.value}, grid={self.grid_pos}, doors={doors})"
+        return (f"Room(id={self.id}, type={self.type.value}, "
+                f"grid={self.grid_pos}, doors={doors}, "
+                f"walls={len(self.walls)}, hazards={len(self.hazards)}, "
+                f"enemies={len(self.enemies)})")
