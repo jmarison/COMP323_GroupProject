@@ -8,6 +8,7 @@ import json
 import pygame
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
+from main.ui import TitleScreen
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,8 @@ class Game:
         self.rng   = random.Random(self.seed)
 
         self.debug = False   # toggle with F1 to see loading zones
+
+        self.title_screen = TitleScreen(self.w, self.h, self. font)
 
         self.events: list[pygame.event.Event] = []
         self._reset_run()
@@ -78,6 +81,7 @@ class Game:
             self.Player.update(dt, keys, self.events)
             self.dungeon.update(self.Player)
 
+
     def draw(self) -> None:
         self.screen.fill(PALETTE.background)
         if self.state == "title":
@@ -89,6 +93,7 @@ class Game:
         else:
             self._draw_gameover()
 
+        self.events.clear()
 
     def _draw_playing(self) -> None:
         # Draw the active room first, then the player on top for layering
@@ -97,40 +102,11 @@ class Game:
         self._draw_dungeon_debug()
 
     def _draw_title(self) -> None:
-        self.screen.fill(PALETTE.title_background)
-        self._draw_text("super cool game title", (self.w // 2, self.h // 6), pygame.Color("white"))
-        mx, my = pygame.mouse.get_pos()
-
-        start_game_button = pygame.Rect(50, 100, 200, 50)
-        settings_button = pygame.Rect(50, 200, 200, 50)
-        quit_button = pygame.Rect(50, 300, 200, 50)
-
-        click = False 
-        for event in self.events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    click = True
-            else:
-             click = False
-
-        if start_game_button.collidepoint((mx, my)):
-            if click:
-                self.state = "playing"
-                
-        if settings_button.collidepoint((mx, my)):
-             if click:
-                click = False 
-                
-        if quit_button.collidepoint((mx, my)):
-            if click:
-                pygame.event.post(pygame.event.Event(pygame.QUIT))
-
-        pygame.draw.rect(self.screen, (255, 0, 0), start_game_button)
-        pygame.draw.rect(self.screen, (255, 0, 0), settings_button)
-        pygame.draw.rect(self.screen, (255, 0, 0), quit_button)
-
-        self._draw_button_text("Start", start_game_button, pygame.Color("white"))
-        self._draw_button_text("Settings", settings_button, pygame.Color("white"))
-        self._draw_button_text("Quit", quit_button, pygame.Color("white"))
+        action = self.title_screen.draw(self.screen, self.events)
+        if action == "start":
+            self.state = "playing"
+        elif action == "quit":
+            pygame.event.post(pygame.event.Event(pygame.QUIT))
 
 
     def _draw_paused(self) -> None:
