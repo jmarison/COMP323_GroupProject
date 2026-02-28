@@ -7,3 +7,9 @@ By Jacob Marison and Gabe Lazatin
 - `F1`: toggle dungeon debug overlay 
 - `R`: generate new dungeon
 - `Esc`: quit
+
+## Run
+From this folder:
+    python3 -m pip  install pygame
+    python3 main.py
+ 

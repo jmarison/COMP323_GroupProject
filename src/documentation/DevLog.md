@@ -29,4 +29,8 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
     - Could also add an increased difficulty by bumping the total_enemy_credit up</br>
     - Settings menu with rebindable keybinds</br>
 
+## February 28, 2026 - Jacob Marison - Dungeon-Generation
+- <h3> Title Screen </h3> 
+    - Moved to ui.py
+    - Changed menu controls from mouse to WASD with Space as select
  
