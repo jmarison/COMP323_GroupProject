@@ -105,7 +105,54 @@ class Room:
         self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
 
-        
+ # --- Walls ---
+    def build_border_walls(self) -> None:
+        wt = WALL_THICKNESS
+        ds = DOOR_SIZE
+        sw = self.screen_w
+        sh = self.screen_h
+        cx = sw // 2
+        cy = sh // 2
+
+        walls: list[Wall] = []
+        def side(has_door: bool, horizontal: bool, fixed: int, lo: int, hi: int) -> None:
+            if has_door:
+                mid = cx if horizontal else cy
+                gap_lo = mid - ds // 2
+                gap_hi = mid + ds // 2
+                # segment before gap
+                if lo < gap_lo:
+                    if horizontal:
+                        walls.append(Wall(lo, fixed, gap_lo - lo, wt))
+                    else:
+                        walls.append(Wall(fixed, lo, wt, gap_lo - lo))
+                # segment after gap
+                if gap_hi < hi:
+                    if horizontal:
+                        walls.append(Wall(gap_hi, fixed, hi - gap_hi, wt))
+                    else:
+                        walls.append(Wall(fixed, gap_hi, wt, hi - gap_hi))
+            else:
+                if horizontal:
+                    walls.append(Wall(lo, fixed, hi - lo, wt))
+                else:
+                    walls.append(Wall(fixed, lo, wt, hi - lo))
+
+
+
+        side(Direction.NORTH in self.doors, True, 0,0,sw)  # top
+        side(Direction.SOUTH in self.doors, True, sh - wt, 0, sw)  # bottom
+        side(Direction.WEST  in self.doors, False, 0, 0, sh)  # left
+        side(Direction.EAST  in self.doors, False, sw - wt, 0, sh)  # right
+
+        self._border_walls = walls
+
+    @property
+    def all_walls(self) -> list[Wall]:
+        border = self._border_walls or []
+        return border + self.walls
+    
+    #  --- Doors ---
     def add_door(self, direction: Direction, target_room_id: int) -> None:
         door = Door(direction=direction, target_room_id=target_room_id)
         door.build_rects(self.screen_w, self.screen_h)

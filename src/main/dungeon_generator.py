@@ -259,6 +259,9 @@ class DungeonGenerator:
 
             rooms[a].add_door(dir_a_to_b, b)
             rooms[b].add_door(dir_b_to_a, a)
+            
+        for room in rooms.values():
+            room.build_border_walls()
 
         if len(rooms[boss_id].doors) != 1:
             return None

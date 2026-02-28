@@ -33,4 +33,8 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 - <h3> Title Screen </h3> 
     - Moved to ui.py
     - Changed menu controls from mouse to WASD with Space as select
+- <h3> Dungeon </h3>
+    - Handful of room presets
+    - Entity class for hazards (spikes and lava) and enemies (basic, fast, heavy)
+    - Player wall collisions
  

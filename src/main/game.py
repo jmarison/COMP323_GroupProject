@@ -79,6 +79,7 @@ class Game:
         if self.state == "playing":
             keys = pygame.key.get_pressed()
             self.Player.update(dt, keys, self.events)
+            self.Player.wall_collisions(self.dungeon.current_room.all_walls)
             self.dungeon.update(self.Player)
 
 
