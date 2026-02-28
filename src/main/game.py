@@ -7,51 +7,81 @@ import json
 
 import pygame
 from main.player import Player
+from main.dungeon_generator import DungeonGenerator
+from main.ui import TitleScreen
 
 
-@dataclass (frozen = True)
+@dataclass(frozen=True)
 class Palette:
-    background: pygame.Color  = field(default_factory=lambda: pygame.Color("#060606"))
-    
+    background: pygame.Color = field(default_factory=lambda: pygame.Color("#060606"))
+    title_background: pygame.Color = field(default_factory=lambda: pygame.Color("#808080"))
+
 PALETTE = Palette()
 
+
 class Game:
-    
+
     def __init__(self):
-        self.fps = 60
-        self.w = 960
-        self.h = 540
+        self.fps    = 60
+        self.w      = 960
+        self.h      = 540
         self.screen = pygame.display.set_mode((self.w, self.h))
-        self.font = pygame.font.SysFont(None, 24)
+        self.font   = pygame.font.SysFont(None, 24)
 
-        self.Player = Player((self.w // 2, self.h //2 ))
+        self.Player = Player((self.w // 2, self.h // 2))
 
+        self.state: str = "title"   # title | playing | gameover | paused
+        self.seed  = random.randrange(0, 2**32)
+        self.rng   = random.Random(self.seed)
 
-        self.state : str = "playing" # title | playing | gameover | paused 
-        self.seed = random.randrange(0, 2**32)
-        self.rng = random.Random(self.seed)
+        self.debug = False   # toggle with F1 to see loading zones
 
+        self.title_screen = TitleScreen(self.w, self.h, self. font)
+
+        self.events: list[pygame.event.Event] = []
         self._reset_run()
-        
+
+    # -------------------------------- reset  -------------------------------------- #
 
     def _reset_run(self) -> None:
         self.Player._reset()
 
-    def handle_event(self, event: pygame.event.Event) -> bool:
-        self.events = []
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                return False
-            self.events.append(event)
-        return True
+        # --- Generate a fresh dungeon ---
+        gen = DungeonGenerator(
+            seed             = self.seed,
+            num_normal_rooms = 6,
+            screen_size      = (self.w, self.h),
+        )
+        self.dungeon = gen.generate()
+
+        # Place player at the centre of the start room
+        self.Player.pos = pygame.Vector2(self.w // 2, self.h // 2)
+        self.Player.rect.center = (self.w // 2, self.h // 2)
+
+    # ------------------------------ Events ---------------------------------------- #
+
+    def handle_event(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                pygame.event.post(pygame.event.Event(pygame.QUIT))
+                return
+            if event.key == pygame.K_F1:
+                self.debug = not self.debug
+            if event.key == pygame.K_r:
+                self.seed = random.randrange(0, 2**32)
+                self._reset_run()
+        self.events.append(event)
+        return 
+ # ------------------------------ Update ---------------------------------------- #
 
     def update(self, dt: float) -> None:
-        if self.state != "playing":
-            return
-        keys = pygame.key.get_pressed()
-        self.Player.update(dt, keys, self.events)
+       
+        if self.state == "playing":
+            keys = pygame.key.get_pressed()
+            self.Player.update(dt, keys, self.events)
+            self.Player.wall_collisions(self.dungeon.current_room.all_walls)
+            self.dungeon.update(self.Player)
+
 
     def draw(self) -> None:
         self.screen.fill(PALETTE.background)
@@ -64,14 +94,42 @@ class Game:
         else:
             self._draw_gameover()
 
-    def _draw_title(self) -> None:
-        pass
+        self.events.clear()
 
     def _draw_playing(self) -> None:
+        # Draw the active room first, then the player on top for layering
+        self.dungeon.draw(self.screen, debug=self.debug)
         self.Player.draw(self.screen)
+        self._draw_dungeon_debug()
+
+    def _draw_title(self) -> None:
+        action = self.title_screen.draw(self.screen, self.events)
+        if action == "start":
+            self.state = "playing"
+        elif action == "quit":
+            pygame.event.post(pygame.event.Event(pygame.QUIT))
+
 
     def _draw_paused(self) -> None:
         pass
 
     def _draw_gameover(self) -> None:
         pass
+
+    def _draw_dungeon_debug(self) -> None:
+        if self.debug:
+            room = self.dungeon.current_room
+            info = self.font.render(
+                f"Room {room.id} | {room.type.value.upper()} | F1=debug  R=regenerate dungeon",
+                True, pygame.Color("#ffffff"),
+            )
+            self.screen.blit(info, (8, self.h - 28))
+    
+    def _draw_text(self, text: str, pos: tuple[int, int], color: pygame.Color) -> None:
+        s = self.font.render(text, True, color)
+        self.screen.blit(s, pos)
+
+    def _draw_button_text(self, text: str, rect: pygame.Rect, color:pygame.Color) -> None:
+        text_surface = self.font.render(text, True, color)
+        text_rect = text_surface.get_rect(center=rect.center)
+        self.screen.blit(text_surface, text_rect)

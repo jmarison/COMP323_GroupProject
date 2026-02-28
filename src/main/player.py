@@ -119,6 +119,29 @@ class Player(pygame.sprite.Sprite):
         direction = self.controls.read_move(keys)
         self.pos += direction * self.speed * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
+
+    # --- Collision --- 
+    def wall_collisions(self, walls: list) -> None:
+        for wall in walls:
+            if not self.rect.colliderect(wall.rect):
+                continue
+
+            dx_left  = self.rect.right  - wall.rect.left   # overlap pushing left
+            dx_right = wall.rect.right  - self.rect.left   # overlap pushing right
+            dy_up    = self.rect.bottom - wall.rect.top     # overlap pushing up
+            dy_down  = wall.rect.bottom - self.rect.top     # overlap pushing down
+
+            min_x = dx_left  if dx_left  < dx_right else -dx_right
+            min_y = dy_up    if dy_up    < dy_down  else -dy_down
+
+            if abs(min_x) < abs(min_y):
+                self.rect.x -= min_x
+            else:
+                self.rect.y -= min_y
+
+            # Keep pos in sync with rect
+            self.pos.x = self.rect.centerx
+            self.pos.y = self.rect.centery
     
     # -- aiming ---
     def _handle_aim(self, keys) -> None:
