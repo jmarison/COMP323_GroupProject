@@ -72,6 +72,7 @@ class Game:
                 self._reset_run()
         self.events.append(event)
         return 
+    
  # ------------------------------ Update ---------------------------------------- #
 
     def update(self, dt: float) -> None:

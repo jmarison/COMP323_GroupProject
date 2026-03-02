@@ -1,6 +1,12 @@
 # Developer Log 
 This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 
+
+## Ongoing bugs:
+ - 3/2/26 - When the spawn room connects to a normal room in such a way that the mini-game room and spawn room are next to each other. Only a door to the normal rooms appear so despite being next to each other, there is no door between the two. 
+
+
+
 ## February 13, 2026 - Jacob Marison
  - Inital project setup 
 

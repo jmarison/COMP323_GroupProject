@@ -89,7 +89,7 @@ class Player(pygame.sprite.Sprite):
         # --- player stats ---
         self.maxHealth: int = 200
         self.currHealth: int  = self.maxHealth
-        self.speed : int = 200
+        self.speed : int = 400
 
         self.controls = ControlScheme(scheme_name)
 

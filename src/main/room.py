@@ -33,7 +33,7 @@ BOSS_W, BOSS_H     = 960, 540        # boss room is same screen size; we just
                                       # mark it visually differently
 
 DOOR_SIZE          = 64              # width/height of the door opening
-LOADING_ZONE_DEPTH = 48              # how deep the trigger rect is
+LOADING_ZONE_DEPTH = 20             # how deep the trigger rect is
 WALL_THICKNESS     = 16
 
 # Colors
