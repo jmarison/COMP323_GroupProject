@@ -1,6 +1,12 @@
 # Developer Log 
 This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 
+
+## Ongoing bugs:
+ - 3/2/26 - When the spawn room connects to a normal room in such a way that the mini-game room and spawn room are next to each other. Only a door to the normal rooms appear so despite being next to each other, there is no door between the two. 
+
+
+
 ## February 13, 2026 - Jacob Marison
  - Inital project setup 
 
@@ -31,10 +37,18 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 
 ## February 28, 2026 - Jacob Marison - Dungeon-Generation
 - <h3> Title Screen </h3> 
-    - Moved to ui.py
-    - Changed menu controls from mouse to WASD with Space as select
+    - Moved to ui.py</br>
+    - Changed menu controls from mouse to WASD with Space as select</br>
 - <h3> Dungeon </h3>
-    - Handful of room presets
-    - Entity class for hazards (spikes and lava) and enemies (basic, fast, heavy)
-    - Player wall collisions
+    - Handful of room presets</br>
+    - Entity class for hazards (spikes and lava) and enemies (basic, fast, heavy)</br>
+    - Player wall collisions</br>
+
+## March 3, 2026 - Jacob Marison - Dungeon-Generation
+- <h3> Settings Menu </h3>
+    - Settings menu implemented </br>
+    - Moved keybinds from player keybindings.py</br>
+    - Keybinds are now rebindable. Keybindings are saved into settings.json and stored through play sessions.</br>
+- <h3>Title</h3>
+    - Changed to match settings menu
  

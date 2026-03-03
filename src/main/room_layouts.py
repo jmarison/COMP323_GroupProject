@@ -1,7 +1,5 @@
 from __future__ import annotations
 """
-room_layouts.py
----------------
 Each layout is a dict with three keys:
     "walls"   : list of (x, y, w, h)
     "hazards" : list of (x, y, w, h, hazard_type)
@@ -9,16 +7,13 @@ Each layout is a dict with three keys:
 
 Coordinates are written for a 960x540 room.
 WALL_THICKNESS = 16, so usable interior starts at x=16, y=16.
-
-Add as many layouts as you like — the dungeon generator will pick one at
-random for each NORMAL room.
 """
 
 from main.entities import HazardType, EnemyType
-
-# Shorthand so layouts stay readable
+#hazard types
 S = HazardType.SPIKE
 L = HazardType.LAVA
+#enemy types
 BA = EnemyType.BASIC
 FA = EnemyType.FAST
 HE = EnemyType.HEAVY
@@ -30,42 +25,42 @@ NORMAL_ROOM_LAYOUTS: list[dict] = [
 
 
     # Layout 0 
-    
+
     {
         "walls": [
-           # (200, 160, 80, 80),
-            (680, 160, 80, 80),
-            (200, 300, 80, 80),
-            (680, 300, 80, 80),
+            (680, 150, 80, 80),
+            (200, 310, 80, 80),
+            (200, 150, 80, 80),
+            (680, 310, 80, 80),
         ],
         "hazards": [],
         "enemies": [
-            (480, 200, BA),
-            (480, 340, BA),
+            (480, 200, HE),
+            (480, 340, HE),
         ],
     },
 
-    
+
     # Layout 1 
    
     {
         "walls": [
-            (16,  140, 680, 40),   # top wall
-            (16,  360, 680, 40),   # bottom wall
+            (W // 4,  140, W // 2, 40),   
+            (W // 4,  360, W // 2, 40), 
         ],
         "hazards": [
-            #(200, 190, 40, 160, S),
-            (340, 190, 40, 160, S),
-            (480, 190, 40, 160, S),
+
         ],
         "enemies": [
-            (820, 270, BA),
-            (820, 200, FA),
-            (820, 340, FA),
+            (W - 100, H - 100, BA),
+            (W//2,  H//2, BA),
+            (100, 100, BA),
+            (W//2 + 75, H//2, FA),
+            (W//2 - 75, H//2, FA),
         ],
     },
 
-   
+
     # Layout 2 
 
     {
@@ -77,7 +72,8 @@ NORMAL_ROOM_LAYOUTS: list[dict] = [
             (340, 200, 280, 140, L),
         ],
         "enemies": [
-            (480, 420, HE),
+            (480, 150, HE),
+            (480, 390, HE),
         ],
     },
 
@@ -99,41 +95,56 @@ NORMAL_ROOM_LAYOUTS: list[dict] = [
    
     {
         "walls": [
-            (160, 100, 40, 200),
-            (320, 240, 40, 200),
-            (500, 100, 40, 180),
-            (660, 220, 40, 200),
-            (820, 100, 40, 160),
+            (150, 100, 100, 100),
+            (W - 250,  H - 200, 100, 100),
+            (150, H - 200, 100, 100),
+            (W - 250, 100, 100, 100),
         ],
         "hazards": [
-            (160, 420, 120, 32, S),
-            (580, 380, 120, 32, S),
+            (250, 125, 175, 50, S),
+            (535, 125, 175, 50, S),
+            (250, H - 175, 175, 50, S),
+            (535, H - 175, 175, 50, S),
         ],
         "enemies": [
             (240, 270, BA),
-            (600, 160, BA),
-            (750, 400, HE),
+            (W - 240, 270, BA),
+            (W // 2, H // 2 , HE),
         ],
     },
-
+ 
 
     # Layout 5
 
     {
         "walls": [
-            (16, 200, 300, 30),
-            (16, 310, 300, 30),
+            (16, 190, 250, 30),
+            (16, 320, 250, 30),
         ],
         "hazards": [
-            (330, 160, 32, 220, S),
-            (400, 160, 32, 220, S),
-            (470, 160, 32, 220, S),
-            (540, 160, 32, 220, S),
+            (430, 160, 32, 220, S),
+            (550, 160, 32, 220, S),
         ],
         "enemies": [
             (750, 180, FA),
             (750, 270, FA),
             (750, 360, FA),
+        ],
+    },
+
+    # Layout 6
+
+       {
+        "walls": [
+        ],
+        "hazards": [
+            (W // 4, 160, W // 2 , 32, S),
+            (W // 4, H - 160 - 32, W // 2, 32, S),
+        ],
+        "enemies": [
+            (W // 2, H // 2, FA),
+            ((W // 2) - 50,  H // 2, FA),
+            ((W // 2) + 50, H // 2,  FA),
         ],
     },
 ]

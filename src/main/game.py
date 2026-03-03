@@ -8,7 +8,8 @@ import json
 import pygame
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen
+from main.ui import TitleScreen, SettingsMenu
+from main.keybindings import KeyBindings
 
 
 @dataclass(frozen=True)
@@ -22,21 +23,23 @@ PALETTE = Palette()
 class Game:
 
     def __init__(self):
-        self.fps    = 60
-        self.w      = 960
-        self.h      = 540
+        self.fps = 60
+        self.w = 960
+        self.h = 540
         self.screen = pygame.display.set_mode((self.w, self.h))
-        self.font   = pygame.font.SysFont(None, 24)
+        self.font = pygame.font.SysFont(None, 24)
 
-        self.Player = Player((self.w // 2, self.h // 2))
+        self.bindings = KeyBindings.load()
+        self.Player = Player((self.w // 2, self.h // 2), self.bindings)
 
-        self.state: str = "title"   # title | playing | gameover | paused
-        self.seed  = random.randrange(0, 2**32)
-        self.rng   = random.Random(self.seed)
+        self.state: str = "title"   # title | settings | playing | gameover | paused
+        self.seed = random.randrange(0, 2**32)
+        self.rng = random.Random(self.seed)
 
         self.debug = False   # toggle with F1 to see loading zones
 
         self.title_screen = TitleScreen(self.w, self.h, self. font)
+        self.settings_menu = SettingsMenu(self.w, self.h, self. font, self.bindings)
 
         self.events: list[pygame.event.Event] = []
         self._reset_run()
@@ -62,7 +65,7 @@ class Game:
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
+            if event.key == pygame.K_ESCAPE and self.state == "playing":
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
                 return
             if event.key == pygame.K_F1:
@@ -72,6 +75,7 @@ class Game:
                 self._reset_run()
         self.events.append(event)
         return 
+    
  # ------------------------------ Update ---------------------------------------- #
 
     def update(self, dt: float) -> None:
@@ -91,6 +95,8 @@ class Game:
             self._draw_playing()
         elif self.state == "paused":
             self._draw_paused()
+        elif self.state == "settings":
+            self._draw_settings()
         else:
             self._draw_gameover()
 
@@ -106,9 +112,15 @@ class Game:
         action = self.title_screen.draw(self.screen, self.events)
         if action == "start":
             self.state = "playing"
+        if action == "settings":
+            self.state = "settings"
         elif action == "quit":
             pygame.event.post(pygame.event.Event(pygame.QUIT))
 
+    def _draw_settings(self) -> None:
+        action = self.settings_menu.draw(self.screen, self.events)
+        if action == "back":
+            self.state = "title"
 
     def _draw_paused(self) -> None:
         pass
