@@ -1,80 +1,37 @@
 import pygame
 from main.weapon import Weapon
 from main.item import Item
+from main.keybindings import KeyBindings
 
 class ControlScheme:
-    SCHEMES = {
-         "WASD_ARROWS": {
-            "move": {
-                "left":  {pygame.K_a},
-                "right": {pygame.K_d},
-                "up":    {pygame.K_w},
-                "down":  {pygame.K_s},
-            },
-            "aim": {
-                "left":  {pygame.K_LEFT},
-                "right": {pygame.K_RIGHT},
-                "up":    {pygame.K_UP},
-                "down":  {pygame.K_DOWN},
-            },
-        },
-        "WASD_IJKL": {
-            "move": {
-                "left":  {pygame.K_a},
-                "right": {pygame.K_d},
-                "up":    {pygame.K_w},
-                "down":  {pygame.K_s},
-            },
-            "aim": {
-                "left":  {pygame.K_j},
-                "right": {pygame.K_l},
-                "up":    {pygame.K_i},
-                "down":  {pygame.K_k},
-            },
-        },
-    }
-    ACTIONS = {
-        "weapon_next":  {pygame.K_e},
-        "weapon_prev":  {pygame.K_q},
-        "weapon_slot1": {pygame.K_1},
-        "weapon_slot2": {pygame.K_2},
-    }
-
-    def __init__(self, scheme_name: str = "WASD_ARROWS") -> None:
-        self.set_scheme(scheme_name)
-
-    def set_scheme(self, scheme_name: str) -> None:
-        if scheme_name not in self.SCHEMES:
-            raise ValueError(f"Unknown scheme '{scheme_name}'. Valid: {list(self.SCHEMES)}")
-        self.name = scheme_name
-        self._move = self.SCHEMES[scheme_name]["move"]
-        self._aim  = self.SCHEMES[scheme_name]["aim"]
+    def __init__(self, bindings: KeyBindings) -> None:
+        self.bindings = bindings
 
     def read_move(self, keys) -> pygame.Vector2:
-        x = 0
-        y = 0
-        if any(keys[k] for k in self._move["left"]):  x -= 1
-        if any(keys[k] for k in self._move["right"]): x += 1
-        if any(keys[k] for k in self._move["up"]):    y -= 1
-        if any(keys[k] for k in self._move["down"]):  y += 1
-        v = pygame.Vector2(x, y)
-        return v.normalize() if v.length_squared() > 0 else v 
-    
-    def read_aim(self, keys) -> pygame.Vector2:
-        x = 0
-        y = 0
-        if any(keys[k] for k in self._aim["left"]):  x -= 1
-        if any(keys[k] for k in self._aim["right"]): x += 1
-        if any(keys[k] for k in self._aim["up"]):    y -= 1
-        if any(keys[k] for k in self._aim["down"]):  y += 1
+        move = self.bindings.move_keys()
+        x, y = 0, 0
+        if any(keys[k] for k in move["left"]):  x -= 1
+        if any(keys[k] for k in move["right"]): x += 1
+        if any(keys[k] for k in move["up"]):    y -= 1
+        if any(keys[k] for k in move["down"]):  y += 1
         v = pygame.Vector2(x, y)
         return v.normalize() if v.length_squared() > 0 else v
-    
+
+    def read_aim(self, keys) -> pygame.Vector2:
+        aim = self.bindings.aim_keys()
+        x, y = 0, 0
+        if any(keys[k] for k in aim["left"]):  x -= 1
+        if any(keys[k] for k in aim["right"]): x += 1
+        if any(keys[k] for k in aim["up"]):    y -= 1
+        if any(keys[k] for k in aim["down"]):  y += 1
+        v = pygame.Vector2(x, y)
+        return v.normalize() if v.length_squared() > 0 else v
+
     def action_pressed(self, action: str, event: pygame.event.Event) -> bool:
         if event.type != pygame.KEYDOWN:
             return False
-        return event.key in self.ACTIONS.get(action, set())
-    
+        return event.key in self.bindings.action_keys().get(action, set())
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -83,7 +40,7 @@ class Player(pygame.sprite.Sprite):
     COLOR = pygame.Color("#4fc3f7")
 
 
-    def __init__(self, pos: tuple[int, int], scheme_name: str = "WASD_IJKL") -> None:
+    def __init__(self, pos: tuple[int, int], bindings: KeyBindings) -> None:
         super().__init__()
 
         # --- player stats ---
@@ -91,7 +48,7 @@ class Player(pygame.sprite.Sprite):
         self.currHealth: int  = self.maxHealth
         self.speed : int = 400
 
-        self.controls = ControlScheme(scheme_name)
+        self.controls = ControlScheme(bindings)
 
         # --- weapons ---
         self.weaponInv: list[Weapon] = []
@@ -126,10 +83,10 @@ class Player(pygame.sprite.Sprite):
             if not self.rect.colliderect(wall.rect):
                 continue
 
-            dx_left  = self.rect.right  - wall.rect.left   # overlap pushing left
-            dx_right = wall.rect.right  - self.rect.left   # overlap pushing right
-            dy_up    = self.rect.bottom - wall.rect.top     # overlap pushing up
-            dy_down  = wall.rect.bottom - self.rect.top     # overlap pushing down
+            dx_left  = self.rect.right  - wall.rect.left   
+            dx_right = wall.rect.right  - self.rect.left   
+            dy_up    = self.rect.bottom - wall.rect.top    
+            dy_down  = wall.rect.bottom - self.rect.top     
 
             min_x = dx_left  if dx_left  < dx_right else -dx_right
             min_y = dy_up    if dy_up    < dy_down  else -dy_down
