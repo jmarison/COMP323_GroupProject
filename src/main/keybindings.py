@@ -11,10 +11,10 @@ _DEFAULTS: dict[str, dict[str, int]] = {
         "down":  pygame.K_s,
     },
     "aim": {
-        "left":  pygame.K_LEFT,
-        "right": pygame.K_RIGHT,
-        "up":    pygame.K_UP,
-        "down":  pygame.K_DOWN,
+        "left":  pygame.K_j,
+        "right": pygame.K_l,
+        "up":    pygame.K_i,
+        "down":  pygame.K_k,
     },
     "actions": {
         "weapon_next":  pygame.K_e,
