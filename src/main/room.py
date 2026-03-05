@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
-from main.entities import Wall, Hazard, Enemy
+from main.entities import Wall, Hazard, Enemy, _build_nav_grid
 import pygame
 
 
@@ -146,6 +146,20 @@ class Room:
         side(Direction.EAST  in self.doors, False, sw - wt, 0, sh)  # right
 
         self._border_walls = walls
+        self._distribute_nav_grids()
+
+    def _distribute_nav_grids(self) -> None:
+       
+        _cache: dict[tuple[int, int], list] = {}
+        for enemy in self.enemies:
+            w, h = enemy.rect.width, enemy.rect.height
+            key = (w, h)
+            if key not in _cache:
+                _cache[key] = _build_nav_grid(
+                    self.screen_w, self.screen_h,
+                    self.all_walls, w, h,
+                )
+            enemy.set_nav_grid(_cache[key])
 
     @property
     def all_walls(self) -> list[Wall]:
@@ -170,8 +184,9 @@ class Room:
 
     def update(self, dt: float, player) -> None:
         player_pos = pygame.Vector2(player.rect.center)
+        walls = self.all_walls
         for enemy in self.enemies:
-            enemy.update(dt, player_pos)
+            enemy.update(dt, player_pos, walls)
 
         for hazard in self.hazards:
             if hazard.collides(player.rect):

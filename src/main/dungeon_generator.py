@@ -8,22 +8,16 @@ from main.entities import Wall, Hazard, Enemy
 from main.room_layouts import NORMAL_ROOM_LAYOUTS
 
 """
-* Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
+ Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
   and a configurable number of NORMAL rooms.
-* The BOSS room has exactly ONE door (entrance only).
-* START and BOSS rooms are placed as far apart as possible on the grid.
-* Only one room is ever active / displayed at a time.
-* Rooms connect through doors which is loading zone triggered by player walking through.
-* NORMAL rooms are assigned a random preset layout (walls, hazards, enemies).
-
-To use:
-    gen     = DungeonGenerator(seed=12345, num_normal_rooms=8)
-    dungeon = gen.generate()
-
-    # In game loop:
-    dungeon.draw(screen, debug=False)
-    dungeon.update(dt, player)
+ The BOSS room has exactly ONE door (entrance only).
+ START and BOSS rooms are placed as far apart as possible on the grid.
+ Only one room is ever active / displayed at a time.
+ Rooms connect through doors which is loading zone triggered by player walking through.
+ NORMAL rooms are assigned a random preset layout (walls, hazards, enemies).
 """
+
+# tunable values
 
 GRID_COLS        = 8
 GRID_ROWS        = 8
@@ -32,7 +26,7 @@ MAX_GEN_ATTEMPTS = 200
 
 
 def _build_layout(layout: dict) -> tuple[list[Wall], list[Hazard], list[Enemy]]:
-    """Instantiate entity objects from a raw layout dict."""
+
     walls   = [Wall(*w)    for w in layout["walls"]]
     hazards = [Hazard(*h)  for h in layout["hazards"]]
     enemies = [Enemy(*e)   for e in layout["enemies"]]
@@ -40,14 +34,14 @@ def _build_layout(layout: dict) -> tuple[list[Wall], list[Hazard], list[Enemy]]:
 
 
 class Dungeon:
-    """
-    Holds all rooms and tracks which room the player is currently in.
-    """
+    
+    #Holds all rooms and tracks which room the player is currently in.
+    
 
     def __init__(
         self,
-        rooms:       dict[int, Room],
-        start_id:    int,
+        rooms: dict[int, Room],
+        start_id: int,
         screen_size: tuple[int, int] = (960, 540),
     ) -> None:
         self.rooms      = rooms
@@ -82,8 +76,8 @@ class Dungeon:
         return {
             Direction.NORTH: pygame.Vector2(cx, pad),
             Direction.SOUTH: pygame.Vector2(cx, self.screen_h - pad),
-            Direction.WEST:  pygame.Vector2(pad, cy),
-            Direction.EAST:  pygame.Vector2(self.screen_w - pad, cy),
+            Direction.WEST: pygame.Vector2(pad, cy),
+            Direction.EAST: pygame.Vector2(self.screen_w - pad, cy),
         }[entry_dir]
 
     # --- Draw ---
@@ -100,13 +94,11 @@ class Dungeon:
 
 class DungeonGenerator:
     """
-    Parameters
-    ----------
-    seed             : RNG seed (int or None for random)
+    seed : RNG seed (int or None for random)
     num_normal_rooms : how many NORMAL rooms to include
-    screen_size      : pixel dimensions of the screen / room
-    grid_cols        : width of the logical grid
-    grid_rows        : height of the logical grid
+    screen_size : pixel dimensions of the screen / room
+    grid_cols : width of the logical grid
+    grid_rows : height of the logical grid
     """
 
     def __init__(
@@ -275,10 +267,10 @@ class DungeonGenerator:
     ) -> list[tuple[int, int]]:
         col, row = pos
         candidates = [
-            (col,     row - 1),
-            (col,     row + 1),
-            (col - 1, row    ),
-            (col + 1, row    ),
+            (col, row - 1),
+            (col, row + 1),
+            (col - 1, row),
+            (col + 1, row),
         ]
         return [
             c for c in candidates

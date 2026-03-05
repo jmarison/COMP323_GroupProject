@@ -36,7 +36,7 @@ class Weapon:
             
             self.currAmmo -= 1
         else:
-            reload()
+            self.reload()
         
         
         

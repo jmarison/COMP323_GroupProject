@@ -1,11 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from pathlib import Path
-from enum import Enum
 import random
-import json
-
 import pygame
+
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
 from main.ui import TitleScreen, SettingsMenu
@@ -84,7 +81,7 @@ class Game:
             keys = pygame.key.get_pressed()
             self.Player.update(dt, keys, self.events)
             self.Player.wall_collisions(self.dungeon.current_room.all_walls)
-            self.dungeon.update(self.Player)
+            self.dungeon.update(self.Player, dt)
 
 
     def draw(self) -> None:

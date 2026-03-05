@@ -53,7 +53,7 @@ class TitleScreen:
             bg_color = pygame.Color("#2a2a4a") if is_selected else pygame.Color("#111122")
             pygame.draw.rect(screen, bg_color, rect)
 
-            # bright if selected, dim otherwise
+            # bright if selected, dim if not
             border_color = pygame.Color("#4fc3f7") if is_selected else pygame.Color("#333355")
             pygame.draw.rect(screen, border_color, rect, 2)
 
@@ -93,10 +93,10 @@ _BIND_ROWS: list[tuple[str, str, str]] = [
     ("actions", "weapon_slot2", "Weapon Slot 2"),
 ]
 
-_COL_LABEL  = 80    # x: action name
-_COL_KEY    = 300   # x: current key
+_COL_LABEL = 80    # x: action name
+_COL_KEY  = 300   # x: current key
 _ROW_START  = 80    # y: first row
-_ROW_H      = 34    # row height
+_ROW_H   = 34    # row height
 _CONFLICT_SHOW_FRAMES = 120   # how long to show the conflict warning
 
 
@@ -124,18 +124,18 @@ class SettingsMenu:
 
         # Column headers
         hdr_y = _ROW_START - 24
-        self._draw_text(screen, "Action",      (_COL_LABEL, hdr_y), pygame.Color("#888888"))
-        self._draw_text(screen, "Key",         (_COL_KEY,   hdr_y), pygame.Color("#888888"))
+        self._draw_text(screen, "Action", (_COL_LABEL, hdr_y), pygame.Color("#888888"))
+        self._draw_text(screen, "Key", (_COL_KEY,   hdr_y), pygame.Color("#888888"))
 
         # Rows
         for i, (group, action, label) in enumerate(_BIND_ROWS):
             y = _ROW_START + i * _ROW_H
             is_selected = (i == self.selected)
 
-            # Row highlight
+            # highlight selected
             if is_selected:
                 pygame.draw.rect(screen, pygame.Color("#2a2a4a"),
-                                 pygame.Rect(60, y - 4, self.w - 120, _ROW_H - 2))
+                pygame.Rect(60, y - 4, self.w - 120, _ROW_H - 2))
 
             key_int   = self.bindings.get(group, action)
             key_label = pygame.key.name(key_int).upper()
@@ -160,10 +160,9 @@ class SettingsMenu:
         # Conflict warning
         if self.conflict_timer > 0:
             self.conflict_timer -= 1
-            self._draw_centered(screen, self.conflict_msg,
-                                self.h - 60, pygame.Color("#ff4444"))
+            self._draw_centered(screen, self.conflict_msg, self.h - 60, pygame.Color("#ff4444"))
 
-        # Footer hints
+        # Footer
         hints = "ENTER Rebind    BACKSPACE Reset Row    ESC Back"
         self._draw_centered(screen, hints, self.h - 28, pygame.Color("#555555"))
 
@@ -226,9 +225,7 @@ class SettingsMenu:
         group, action, _ = _BIND_ROWS[self.selected]
         default_key = _DEFAULTS[group][action]
         # Only reset if the default isn't already taken by something else
-        conflict = self.bindings.is_key_used(default_key,
-                                             exclude_group=group,
-                                             exclude_action=action)
+        conflict = self.bindings.is_key_used(default_key, exclude_group=group, exclude_action=action)
         if conflict:
             c_group, c_action = conflict
             c_label = next((lbl for g, a, lbl in _BIND_ROWS
