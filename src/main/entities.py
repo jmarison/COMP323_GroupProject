@@ -182,6 +182,9 @@ class Enemy:
         self._path: list[tuple[int, int]]      = []
         self._repath_timer: float = 0.0
 
+        # when player enters room there is a delay before enemies start moving to give time to react
+        self._spawn_delay: float = 0.2
+
     # called by Room AFTER the layout is built
     def set_nav_grid(self, grid: list[list[bool]]) -> None:
         self._nav_grid = grid
@@ -191,6 +194,11 @@ class Enemy:
     def update(self, dt: float, player_pos: pygame.Vector2, walls: Optional[list[Wall]] = None) -> None:
         if not self.alive:
             return
+        
+        if self._spawn_delay > 0:
+            self._spawn_delay -= dt
+            return
+        
         direction = self._get_move_direction(dt, player_pos)
 
         if direction.length_squared() > 0:
