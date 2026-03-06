@@ -5,7 +5,7 @@ import pygame
 
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu
+from main.ui import TitleScreen, SettingsMenu, ItemHUD
 from main.keybindings import KeyBindings
 
 
@@ -37,6 +37,7 @@ class Game:
 
         self.title_screen = TitleScreen(self.w, self.h, self. font)
         self.settings_menu = SettingsMenu(self.w, self.h, self. font, self.bindings)
+        self.item_hud = ItemHUD(self.w, self.h)
 
         self.events: list[pygame.event.Event] = []
         self._reset_run()
@@ -103,6 +104,7 @@ class Game:
         # Draw the active room first, then the player on top for layering
         self.dungeon.draw(self.screen, debug=self.debug)
         self.Player.draw(self.screen)
+        self.item_hud.draw(self.screen, self.Player.items)
         self._draw_dungeon_debug()
 
     def _draw_title(self) -> None:

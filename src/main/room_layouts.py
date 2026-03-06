@@ -1,9 +1,10 @@
 from __future__ import annotations
 """
-Each layout is a dict with three keys:
-    "walls"   : list of (x, y, w, h)
-    "hazards" : list of (x, y, w, h, hazard_type)
-    "enemies" : list of (x, y, enemy_type)
+Each layout is a dict with keys:
+    "walls"    : list of (x, y, w, h)
+    "hazards"  : list of (x, y, w, h, hazard_type)
+    "enemies"  : list of (x, y, enemy_type)
+    "pedestals": list of (x, y)   ← mini-game rooms only
 
 Coordinates are written for a 960x540 room.
 WALL_THICKNESS = 16, so usable interior starts at x=16, y=16.
@@ -145,6 +146,59 @@ NORMAL_ROOM_LAYOUTS: list[dict] = [
             (W // 2, H // 2, FA),
             ((W // 2) - 50,  H // 2, FA),
             ((W // 2) + 50, H // 2,  FA),
+        ],
+    },
+]
+
+
+# Mini-game room layouts
+
+
+MINI_GAME_ROOM_LAYOUTS: list[dict] = [
+
+    # Layout 0 — three pedestals in a row across the center
+    {
+        "walls": [
+            (16, H // 2 - 20, 250, 16),
+            (W - 266, H // 2 - 20, 250, 16),
+        ],
+        "hazards":   [],
+        "enemies":   [],
+        "pedestals": [
+            (W // 4, H // 2 - 80),
+            (W // 2, H // 2 - 80),
+            (W * 3 // 4, H // 2 - 80),
+        ],
+    },
+
+    # Layout 1 — pedestals in a triangle
+    {
+        "walls": [],
+        "hazards":  [],
+        "enemies": [],
+        "pedestals": [
+            (W // 2, H // 3),       
+            (W // 3, H * 2 // 3),   
+            (W * 2 // 3, H * 2 // 3), 
+        ],
+    },
+
+    # Layout 2 — pedestals separated by decorative pillars
+    {
+        "walls": [
+            (W // 4 - 44, H // 2 - 64, 16, 88),
+            (W // 4 + 28, H // 2 - 64, 16, 88),
+            (W // 2 - 24, H // 2 - 64, 16, 88),
+            (W // 2 + 8, H // 2 - 64, 16, 88),
+            (W * 3 // 4 - 44, H // 2 - 64, 16, 88),
+            (W * 3 // 4 + 28, H // 2 - 64, 16, 88),
+        ],
+        "hazards":   [],
+        "enemies":   [],
+        "pedestals": [
+            (W // 4, H // 2 - 20),
+            (W // 2, H // 2 - 20),
+            (W * 3 // 4, H // 2 - 20),
         ],
     },
 ]

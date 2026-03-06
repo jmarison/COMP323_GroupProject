@@ -255,3 +255,82 @@ class SettingsMenu:
         font = pygame.font.SysFont(None, 32 if big else 20)
         s = font.render(text, True, color)
         screen.blit(s, (self.w // 2 - s.get_width() // 2, y))
+
+
+# --- Items ---
+
+_HUD_COLS = 5         # max items per row before wrapping
+_HUD_CELL = 36        # px per item cell (sprite is 32×32, 2 px padding each side)
+_HUD_PAD  = 6         # padding inside the panel border
+_HUD_MARGIN  = 8         # gap from screen edge
+_HUD_MAX_ROWS = 3         # panel grows up to this many rows
+
+COL_HUD_BG         = pygame.Color(10,  10,  20,  180)   # semi-transparent dark
+COL_HUD_BORDER     = pygame.Color("#3a3a5c")
+COL_HUD_CELL_BG    = pygame.Color(30,  30,  50,  200)
+COL_HUD_CELL_HL    = pygame.Color(80,  80, 120,  200)    # most-recently-added cell
+
+
+class ItemHUD:
+    def __init__(self, screen_w: int, screen_h: int) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self._font    = None         
+
+    def draw(self, surface: pygame.Surface, items: list) -> None:
+        if self._font is None:
+            self._font = pygame.font.SysFont(None, 16)
+
+        num_items  = len(items)
+        num_cols   = _HUD_COLS
+        num_rows   = max(1, min(_HUD_MAX_ROWS,
+                                (num_items + num_cols - 1) // num_cols))
+
+        panel_w = _HUD_PAD * 2 + num_cols * _HUD_CELL
+        panel_h = _HUD_PAD * 2 + num_rows * _HUD_CELL + 14 
+        panel_x = self.screen_w  - panel_w  - _HUD_MARGIN
+        panel_y = _HUD_MARGIN
+
+        panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel_surf.fill(COL_HUD_BG)
+        pygame.draw.rect(panel_surf, COL_HUD_BORDER, panel_surf.get_rect(), 2, border_radius=4)
+        surface.blit(panel_surf, (panel_x, panel_y))
+
+        label      = self._font.render("ITEMS", True, pygame.Color("#888888"))
+        surface.blit(label, (panel_x + _HUD_PAD, panel_y + 3))
+
+        cell_top   = panel_y + _HUD_PAD + 14
+        for idx, item in enumerate(items[:num_rows * num_cols]):
+            col    = idx % num_cols
+            row    = idx // num_cols
+            cx     = panel_x + _HUD_PAD + col * _HUD_CELL
+            cy     = cell_top + row * _HUD_CELL
+            cell_r = pygame.Rect(cx, cy, _HUD_CELL - 2, _HUD_CELL - 2)
+
+            is_newest = (idx == num_items - 1)
+            cell_col  = COL_HUD_CELL_HL if is_newest else COL_HUD_CELL_BG
+
+            cell_surf = pygame.Surface((cell_r.width, cell_r.height), pygame.SRCALPHA)
+            cell_surf.fill(cell_col)
+            pygame.draw.rect(cell_surf, COL_HUD_BORDER,
+                             cell_surf.get_rect(), 1, border_radius=2)
+            surface.blit(cell_surf, cell_r.topleft)
+
+            sprite      = item.sprite
+            inset       = 2
+            target_size = (_HUD_CELL - 2 - inset * 2, _HUD_CELL - 2 - inset * 2)
+            scaled      = pygame.transform.smoothscale(sprite, target_size)
+            surface.blit(scaled, (cx + inset, cy + inset))
+
+        total_slots = num_rows * num_cols
+        for idx in range(num_items, total_slots):
+            col = idx % num_cols
+            row = idx // num_cols
+            cx = panel_x + _HUD_PAD + col * _HUD_CELL
+            cy = cell_top + row * _HUD_CELL
+            cell_r = pygame.Rect(cx, cy, _HUD_CELL - 2, _HUD_CELL - 2)
+            slot_surf = pygame.Surface((cell_r.width, cell_r.height), pygame.SRCALPHA)
+            slot_surf.fill((20, 20, 35, 160))
+            pygame.draw.rect(slot_surf, pygame.Color(50, 50, 70, 200),
+                             slot_surf.get_rect(), 1, border_radius=2)
+            surface.blit(slot_surf, cell_r.topleft)

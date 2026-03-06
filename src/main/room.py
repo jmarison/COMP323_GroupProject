@@ -3,21 +3,22 @@ from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
 from main.entities import Wall, Hazard, Enemy, _build_nav_grid
+from main.item import ItemPedestal
 import pygame
 
 
 class RoomType(Enum):
-    NORMAL    = "normal"
-    START     = "start"
-    BOSS      = "boss"
+    NORMAL = "normal"
+    START = "start"
+    BOSS = "boss"
     MINI_GAME = "mini_game"
 
 
 class Direction(Enum):
     NORTH = "north"
     SOUTH = "south"
-    EAST  = "east"
-    WEST  = "west"
+    EAST = "east"
+    WEST = "west"
 
     def opposite(self) -> "Direction":
         return {
@@ -88,9 +89,10 @@ class Room:
         grid_pos:  tuple[int, int],
         screen_w:  int = ROOM_W,
         screen_h:  int = ROOM_H,
-        walls:     list[Wall]   = None,
-        hazards:   list[Hazard] = None,
-        enemies:   list[Enemy]  = None,
+        walls:     list[Wall]         = None,
+        hazards:   list[Hazard]       = None,
+        enemies:   list[Enemy]        = None,
+        pedestals: list[ItemPedestal] = None,
     ) -> None:
         self.id        = room_id
         self.type      = room_type
@@ -98,9 +100,10 @@ class Room:
         self.screen_w  = screen_w
         self.screen_h  = screen_h
 
-        self.walls   : list[Wall]   = walls   or []
-        self.hazards : list[Hazard] = hazards or []
-        self.enemies : list[Enemy]  = enemies or []
+        self.walls     : list[Wall]         = walls     or []
+        self.hazards   : list[Hazard]       = hazards   or []
+        self.enemies   : list[Enemy]        = enemies   or []
+        self.pedestals : list[ItemPedestal] = pedestals or []
 
         self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
@@ -192,6 +195,14 @@ class Room:
             if hazard.collides(player.rect):
                 player.take_damage(hazard.damage)
 
+        for pedestal in self.pedestals:
+            item = pedestal.update(dt, player)
+            if item is not None:
+                player.items.append(item)
+                for other in self.pedestals:
+                    if other is not pedestal:
+                        other.taken = True
+
 
     def _build_surface(self) -> pygame.Surface:
         surf = pygame.Surface((self.screen_w, self.screen_h))
@@ -237,6 +248,8 @@ class Room:
             hazard.draw(surface)
         for enemy in self.enemies:
             enemy.draw(surface)
+        for pedestal in self.pedestals:
+            pedestal.draw(surface, debug=debug)
 
         if debug:
             overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)

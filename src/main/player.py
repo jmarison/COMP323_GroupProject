@@ -148,7 +148,10 @@ class Player(pygame.sprite.Sprite):
         return self.currHealth <= 0
     
     def _reset(self) -> None:
-        pass
+        self.items = []
+        self.weaponInv = []
+        self.currWeaponIndex = 0
+        self.currHealth = self.maxHealth
     
     # --- Drawing --- 
     def draw(self, surface: pygame.Surface) -> None:

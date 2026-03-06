@@ -5,7 +5,8 @@ from typing import Optional
 import pygame
 from main.room import Room, RoomType, Direction
 from main.entities import Wall, Hazard, Enemy
-from main.room_layouts import NORMAL_ROOM_LAYOUTS
+from main.room_layouts import NORMAL_ROOM_LAYOUTS, MINI_GAME_ROOM_LAYOUTS
+from main.item import ItemPedestal, ITEM_CATALOGUE
 
 """
  Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
@@ -25,12 +26,25 @@ DEFAULT_NORMALS  = 8
 MAX_GEN_ATTEMPTS = 200
 
 
-def _build_layout(layout: dict) -> tuple[list[Wall], list[Hazard], list[Enemy]]:
+def _build_layout(
+    layout: dict,
+    rng: random.Random,
+    room_type: RoomType,
+) -> tuple[list[Wall], list[Hazard], list[Enemy], list[ItemPedestal]]:
 
-    walls   = [Wall(*w)    for w in layout["walls"]]
-    hazards = [Hazard(*h)  for h in layout["hazards"]]
-    enemies = [Enemy(*e)   for e in layout["enemies"]]
-    return walls, hazards, enemies
+    walls   = [Wall(*w)   for w in layout["walls"]]
+    hazards = [Hazard(*h) for h in layout["hazards"]]
+    enemies = [Enemy(*e)  for e in layout["enemies"]]
+
+    pedestals: list[ItemPedestal] = []
+    if room_type == RoomType.MINI_GAME:
+        positions = layout.get("pedestals", [])
+        # Pick 3 distinct random items from the catalogue
+        chosen_items = rng.sample(ITEM_CATALOGUE, min(len(positions), len(ITEM_CATALOGUE)))
+        for pos, item in zip(positions, chosen_items):
+            pedestals.append(ItemPedestal(pos, item))
+
+    return walls, hazards, enemies, pedestals
 
 
 class Dungeon:
@@ -224,12 +238,15 @@ class DungeonGenerator:
         for rid in all_ids:
             rtype = type_map[rid]
 
-            # Pick a random preset layout for normal rooms
-            if rtype == RoomType.NORMAL and NORMAL_ROOM_LAYOUTS:
+            # Pick a random preset layout
+            if rtype == RoomType.MINI_GAME and MINI_GAME_ROOM_LAYOUTS:
+                layout = self.rng.choice(MINI_GAME_ROOM_LAYOUTS)
+                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
+            elif rtype == RoomType.NORMAL and NORMAL_ROOM_LAYOUTS:
                 layout = self.rng.choice(NORMAL_ROOM_LAYOUTS)
-                walls, hazards, enemies = _build_layout(layout)
+                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
             else:
-                walls, hazards, enemies = [], [], []
+                walls, hazards, enemies, pedestals = [], [], [], []
 
             rooms[rid] = Room(
                 room_id   = rid,
@@ -240,6 +257,7 @@ class DungeonGenerator:
                 walls     = walls,
                 hazards   = hazards,
                 enemies   = enemies,
+                pedestals = pedestals,
             )
 
         for a, b in adjacency:
