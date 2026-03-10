@@ -53,7 +53,7 @@ class TitleScreen:
             bg_color = pygame.Color("#2a2a4a") if is_selected else pygame.Color("#111122")
             pygame.draw.rect(screen, bg_color, rect)
 
-            # bright if selected, dim otherwise
+            # bright if selected, dim if not
             border_color = pygame.Color("#4fc3f7") if is_selected else pygame.Color("#333355")
             pygame.draw.rect(screen, border_color, rect, 2)
 
@@ -93,10 +93,10 @@ _BIND_ROWS: list[tuple[str, str, str]] = [
     ("actions", "weapon_slot2", "Weapon Slot 2"),
 ]
 
-_COL_LABEL  = 80    # x: action name
-_COL_KEY    = 300   # x: current key
+_COL_LABEL = 80    # x: action name
+_COL_KEY  = 300   # x: current key
 _ROW_START  = 80    # y: first row
-_ROW_H      = 34    # row height
+_ROW_H   = 34    # row height
 _CONFLICT_SHOW_FRAMES = 120   # how long to show the conflict warning
 
 
@@ -124,18 +124,18 @@ class SettingsMenu:
 
         # Column headers
         hdr_y = _ROW_START - 24
-        self._draw_text(screen, "Action",      (_COL_LABEL, hdr_y), pygame.Color("#888888"))
-        self._draw_text(screen, "Key",         (_COL_KEY,   hdr_y), pygame.Color("#888888"))
+        self._draw_text(screen, "Action", (_COL_LABEL, hdr_y), pygame.Color("#888888"))
+        self._draw_text(screen, "Key", (_COL_KEY,   hdr_y), pygame.Color("#888888"))
 
         # Rows
         for i, (group, action, label) in enumerate(_BIND_ROWS):
             y = _ROW_START + i * _ROW_H
             is_selected = (i == self.selected)
 
-            # Row highlight
+            # highlight selected
             if is_selected:
                 pygame.draw.rect(screen, pygame.Color("#2a2a4a"),
-                                 pygame.Rect(60, y - 4, self.w - 120, _ROW_H - 2))
+                pygame.Rect(60, y - 4, self.w - 120, _ROW_H - 2))
 
             key_int   = self.bindings.get(group, action)
             key_label = pygame.key.name(key_int).upper()
@@ -160,10 +160,9 @@ class SettingsMenu:
         # Conflict warning
         if self.conflict_timer > 0:
             self.conflict_timer -= 1
-            self._draw_centered(screen, self.conflict_msg,
-                                self.h - 60, pygame.Color("#ff4444"))
+            self._draw_centered(screen, self.conflict_msg, self.h - 60, pygame.Color("#ff4444"))
 
-        # Footer hints
+        # Footer
         hints = "ENTER Rebind    BACKSPACE Reset Row    ESC Back"
         self._draw_centered(screen, hints, self.h - 28, pygame.Color("#555555"))
 
@@ -226,9 +225,7 @@ class SettingsMenu:
         group, action, _ = _BIND_ROWS[self.selected]
         default_key = _DEFAULTS[group][action]
         # Only reset if the default isn't already taken by something else
-        conflict = self.bindings.is_key_used(default_key,
-                                             exclude_group=group,
-                                             exclude_action=action)
+        conflict = self.bindings.is_key_used(default_key, exclude_group=group, exclude_action=action)
         if conflict:
             c_group, c_action = conflict
             c_label = next((lbl for g, a, lbl in _BIND_ROWS
@@ -258,3 +255,215 @@ class SettingsMenu:
         font = pygame.font.SysFont(None, 32 if big else 20)
         s = font.render(text, True, color)
         screen.blit(s, (self.w // 2 - s.get_width() // 2, y))
+
+
+# --- Items ---
+
+_HUD_COLS = 5         # max items per row before wrapping
+_HUD_CELL = 36        # px per item cell (sprite is 32×32, 2 px padding each side)
+_HUD_PAD  = 6         # padding inside the panel border
+_HUD_MARGIN  = 8         # gap from screen edge
+_HUD_MAX_ROWS = 3         # panel grows up to this many rows
+
+COL_HUD_BG         = pygame.Color(10,  10,  20,  180)   # semi-transparent dark
+COL_HUD_BORDER     = pygame.Color("#3a3a5c")
+COL_HUD_CELL_BG    = pygame.Color(30,  30,  50,  200)
+COL_HUD_CELL_HL    = pygame.Color(80,  80, 120,  200)    # most-recently-added cell
+
+
+class ItemHUD:
+    def __init__(self, screen_w: int, screen_h: int) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self._font    = None         
+
+    def draw(self, surface: pygame.Surface, items: list) -> None:
+        if self._font is None:
+            self._font = pygame.font.SysFont(None, 16)
+
+        num_items  = len(items)
+        num_cols   = _HUD_COLS
+        num_rows   = max(1, min(_HUD_MAX_ROWS,
+                                (num_items + num_cols - 1) // num_cols))
+
+        panel_w = _HUD_PAD * 2 + num_cols * _HUD_CELL
+        panel_h = _HUD_PAD * 2 + num_rows * _HUD_CELL + 14 
+        panel_x = self.screen_w  - panel_w  - _HUD_MARGIN
+        panel_y = _HUD_MARGIN
+
+        panel_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel_surf.fill(COL_HUD_BG)
+        pygame.draw.rect(panel_surf, COL_HUD_BORDER, panel_surf.get_rect(), 2, border_radius=4)
+        surface.blit(panel_surf, (panel_x, panel_y))
+
+        label      = self._font.render("ITEMS", True, pygame.Color("#888888"))
+        surface.blit(label, (panel_x + _HUD_PAD, panel_y + 3))
+
+        cell_top   = panel_y + _HUD_PAD + 14
+        for idx, item in enumerate(items[:num_rows * num_cols]):
+            col    = idx % num_cols
+            row    = idx // num_cols
+            cx     = panel_x + _HUD_PAD + col * _HUD_CELL
+            cy     = cell_top + row * _HUD_CELL
+            cell_r = pygame.Rect(cx, cy, _HUD_CELL - 2, _HUD_CELL - 2)
+
+            is_newest = (idx == num_items - 1)
+            cell_col  = COL_HUD_CELL_HL if is_newest else COL_HUD_CELL_BG
+
+            cell_surf = pygame.Surface((cell_r.width, cell_r.height), pygame.SRCALPHA)
+            cell_surf.fill(cell_col)
+            pygame.draw.rect(cell_surf, COL_HUD_BORDER,
+                             cell_surf.get_rect(), 1, border_radius=2)
+            surface.blit(cell_surf, cell_r.topleft)
+
+            sprite      = item.sprite
+            inset       = 2
+            target_size = (_HUD_CELL - 2 - inset * 2, _HUD_CELL - 2 - inset * 2)
+            scaled      = pygame.transform.smoothscale(sprite, target_size)
+            surface.blit(scaled, (cx + inset, cy + inset))
+
+        total_slots = num_rows * num_cols
+        for idx in range(num_items, total_slots):
+            col = idx % num_cols
+            row = idx // num_cols
+            cx = panel_x + _HUD_PAD + col * _HUD_CELL
+            cy = cell_top + row * _HUD_CELL
+            cell_r = pygame.Rect(cx, cy, _HUD_CELL - 2, _HUD_CELL - 2)
+            slot_surf = pygame.Surface((cell_r.width, cell_r.height), pygame.SRCALPHA)
+            slot_surf.fill((20, 20, 35, 160))
+            pygame.draw.rect(slot_surf, pygame.Color(50, 50, 70, 200),
+                             slot_surf.get_rect(), 1, border_radius=2)
+            surface.blit(slot_surf, cell_r.topleft)
+
+
+# --- PlayerHUD - health bar, active weapon, and ammo ---
+_HP_BAR_W     = 200
+_HP_BAR_H     = 16
+_HP_BAR_X     = 12
+_HP_BAR_Y     = 12
+_WPN_PANEL_W  = 200
+_WPN_PANEL_H  = 52
+_WPN_PAD      = 8
+
+COL_HP_BG      = pygame.Color(40,  10,  10,  210)
+COL_HP_FILL    = pygame.Color("#e84040")
+COL_HP_FULL    = pygame.Color("#44ee44")
+COL_HP_BORDER  = pygame.Color("#664444")
+COL_WPN_BG     = pygame.Color(10,  10,  30,  200)
+COL_WPN_BORDER = pygame.Color("#3a3a5c")
+COL_AMMO_FULL  = pygame.Color("#ffe066")
+COL_AMMO_EMPTY = pygame.Color("#444422")
+COL_RELOAD     = pygame.Color("#ff9900")
+
+class PlayerHUD:
+    def __init__(self, screen_w: int, screen_h: int) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self._font_sm: pygame.font.Font | None = None
+        self._font_md: pygame.font.Font | None = None
+    
+    def draw(self, surface: pygame.Surface, player) -> None:
+        if self._font_sm is None:
+            self._font_sm = pygame.font.SysFont(None, 18)
+            self._font_md = pygame.font.SysFont(None, 22)
+        
+        self._draw_health(surface, player)
+        self._draw_weapon(surface, player)
+    
+
+    # --- health ---
+    def _draw_health(self, surface: pygame.Surface, player) -> None:
+        x, y = _HP_BAR_X, self.screen_h - _HP_BAR_Y - _HP_BAR_H - _WPN_PANEL_H - 6
+        bg = pygame.Surface((_HP_BAR_W, _HP_BAR_H), pygame.SRCALPHA)
+        bg.fill(COL_HP_BG)
+        surface.blit(bg, (x, y))
+
+        ratio = max(0.0, player.currHealth / player.maxHealth)
+        fill_w = int(_HP_BAR_W * ratio)
+        fill_col = COL_HP_FULL if ratio >= 0.99 else COL_HP_FILL
+        if fill_w > 0:
+            pygame.draw.rect(surface, fill_col, (x, y, fill_w, _HP_BAR_H))
+
+        pygame.draw.rect(surface, COL_HP_BORDER, (x, y, _HP_BAR_W, _HP_BAR_H), 2)
+        label = self._font_sm.render(
+            f"{player.currHealth} / {player.maxHealth}", True, pygame.Color("#ffffff")
+        )
+        lx = x + _HP_BAR_W // 2 - label.get_width() // 2
+        ly = y + _HP_BAR_H // 2 - label.get_height() // 2
+        surface.blit(label, (lx, ly))
+
+        tag = self._font_sm.render("HP", True, pygame.Color("#aaaaaa"))
+        surface.blit(tag, (x - tag.get_width() - 4, ly))
+
+
+    def _draw_weapon(self, surface: pygame.Surface, player) -> None:
+        x = _HP_BAR_X
+        y = self.screen_h - _HP_BAR_Y - _WPN_PANEL_H
+
+        panel = pygame.Surface((_WPN_PANEL_W, _WPN_PANEL_H), pygame.SRCALPHA)
+        panel.fill(COL_WPN_BG)
+        pygame.draw.rect(panel, COL_WPN_BORDER, panel.get_rect(), 2, border_radius=4)
+        surface.blit(panel, (x, y))
+
+        weapon = player.current_weapon
+        if weapon is None:
+            no_wpn = self._font_sm.render("No weapon", True, pygame.Color("#666666"))
+            surface.blit(no_wpn, (x + _WPN_PAD, y + _WPN_PANEL_H // 2 - no_wpn.get_height() // 2))
+            return
+
+        # weapon name
+        name_surf = self._font_md.render(weapon.name, True, pygame.Color("#ffffff"))
+        surface.blit(name_surf, (x + _WPN_PAD, y + 6))
+
+        # type badge
+        badge_text = "MELEE" if weapon.wtype == "melee" else "RANGED"
+        badge_col  = pygame.Color("#ff8888") if weapon.wtype == "melee" else pygame.Color("#88aaff")
+        badge_surf = self._font_sm.render(badge_text, True, badge_col)
+        surface.blit(badge_surf, (x + _WPN_PAD, y + 6 + name_surf.get_height() + 2))
+
+        # ammo display
+        if weapon.wtype == "ranged":
+            self._draw_ammo(surface, weapon, x, y)
+
+        # reload indicator
+        if weapon._reloading > 0:
+            progress = 1.0 - (weapon._reloading / weapon.RELOAD_TIME)
+            rel_w = int((_WPN_PANEL_W - _WPN_PAD * 2) * progress)
+            bar_y = y + _WPN_PANEL_H - 6
+            pygame.draw.rect(surface, pygame.Color("#333333"),
+                             (x + _WPN_PAD, bar_y, _WPN_PANEL_W - _WPN_PAD * 2, 4))
+            pygame.draw.rect(surface, COL_RELOAD,
+                             (x + _WPN_PAD, bar_y, rel_w, 4))
+
+    def _draw_ammo(self, surface: pygame.Surface, weapon, panel_x, panel_y) -> None:
+        if weapon.unlimited_ammo:
+            inf_surf = self._font_sm.render("∞", True, COL_AMMO_FULL)
+            surface.blit(inf_surf, (panel_x + _WPN_PANEL_W - inf_surf.get_width() - _WPN_PAD,
+                                    panel_y + 8))
+            return
+
+        # draw bullet in clip
+        pip_size  = 7
+        pip_gap   = 3
+        max_pips  = weapon.clip_size
+        per_row   = min(max_pips, 15)
+        start_x   = panel_x + _WPN_PANEL_W - _WPN_PAD - (per_row * (pip_size + pip_gap))
+        pip_y     = panel_y + 10
+
+        for i in range(max_pips):
+            col = i % per_row
+            row = i // per_row
+            px  = start_x + col * (pip_size + pip_gap)
+            py  = pip_y   + row * (pip_size + pip_gap + 1)
+            filled = i < weapon.curr_ammo
+            pygame.draw.rect(
+                surface,
+                COL_AMMO_FULL if filled else COL_AMMO_EMPTY,
+                (px, py, pip_size, pip_size),
+                0 if filled else 1,
+            )
+
+        reserve_text = f"x{weapon.reserve_clips}" if weapon.reserve_clips >= 0 else "∞"
+        rsv = self._font_sm.render(reserve_text, True, pygame.Color("#aaaaaa"))
+        surface.blit(rsv, (panel_x + _WPN_PANEL_W - rsv.get_width() - _WPN_PAD,
+                           panel_y + _WPN_PANEL_H - rsv.get_height() - 4))

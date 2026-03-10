@@ -2,22 +2,23 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
-from main.entities import Wall, Hazard, Enemy
+from main.entities import Wall, Hazard, Enemy, _build_nav_grid
+from main.item import ItemPedestal
 import pygame
 
 
 class RoomType(Enum):
-    NORMAL    = "normal"
-    START     = "start"
-    BOSS      = "boss"
+    NORMAL = "normal"
+    START = "start"
+    BOSS = "boss"
     MINI_GAME = "mini_game"
 
 
 class Direction(Enum):
     NORTH = "north"
     SOUTH = "south"
-    EAST  = "east"
-    WEST  = "west"
+    EAST = "east"
+    WEST = "west"
 
     def opposite(self) -> "Direction":
         return {
@@ -88,9 +89,10 @@ class Room:
         grid_pos:  tuple[int, int],
         screen_w:  int = ROOM_W,
         screen_h:  int = ROOM_H,
-        walls:     list[Wall]   = None,
-        hazards:   list[Hazard] = None,
-        enemies:   list[Enemy]  = None,
+        walls:     list[Wall]         = None,
+        hazards:   list[Hazard]       = None,
+        enemies:   list[Enemy]        = None,
+        pedestals: list[ItemPedestal] = None,
     ) -> None:
         self.id        = room_id
         self.type      = room_type
@@ -98,9 +100,10 @@ class Room:
         self.screen_w  = screen_w
         self.screen_h  = screen_h
 
-        self.walls   : list[Wall]   = walls   or []
-        self.hazards : list[Hazard] = hazards or []
-        self.enemies : list[Enemy]  = enemies or []
+        self.walls     : list[Wall]         = walls     or []
+        self.hazards   : list[Hazard]       = hazards   or []
+        self.enemies   : list[Enemy]        = enemies   or []
+        self.pedestals : list[ItemPedestal] = pedestals or []
 
         self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
@@ -146,6 +149,20 @@ class Room:
         side(Direction.EAST  in self.doors, False, sw - wt, 0, sh)  # right
 
         self._border_walls = walls
+        self._distribute_nav_grids()
+
+    def _distribute_nav_grids(self) -> None:
+       
+        _cache: dict[tuple[int, int], list] = {}
+        for enemy in self.enemies:
+            w, h = enemy.rect.width, enemy.rect.height
+            key = (w, h)
+            if key not in _cache:
+                _cache[key] = _build_nav_grid(
+                    self.screen_w, self.screen_h,
+                    self.all_walls, w, h,
+                )
+            enemy.set_nav_grid(_cache[key])
 
     @property
     def all_walls(self) -> list[Wall]:
@@ -170,12 +187,21 @@ class Room:
 
     def update(self, dt: float, player) -> None:
         player_pos = pygame.Vector2(player.rect.center)
+        walls = self.all_walls
         for enemy in self.enemies:
-            enemy.update(dt, player_pos)
+            enemy.update(dt, player_pos, walls)
 
         for hazard in self.hazards:
             if hazard.collides(player.rect):
                 player.take_damage(hazard.damage)
+
+        for pedestal in self.pedestals:
+            item = pedestal.update(dt, player)
+            if item is not None:
+                player.items.append(item)
+                for other in self.pedestals:
+                    if other is not pedestal:
+                        other.taken = True
 
 
     def _build_surface(self) -> pygame.Surface:
@@ -222,6 +248,8 @@ class Room:
             hazard.draw(surface)
         for enemy in self.enemies:
             enemy.draw(surface)
+        for pedestal in self.pedestals:
+            pedestal.draw(surface, debug=debug)
 
         if debug:
             overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)

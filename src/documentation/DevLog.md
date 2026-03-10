@@ -52,3 +52,11 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 - <h3>Title</h3>
     - Changed to match settings menu
  
+ ## March 5, 2026 - Jacob Marison - Enemies-and-Weapons
+ - <h3> Enemies </h3>
+    - Implemented enemy pathfinding using A*</br>
+    - The room is divided into a grid of 16x16 pixel cells. Each cell is marked as either walkable or blocked based on whether an enemy of that size would overlap a wall if placed there. Larger enemies like the Heavy get a wider clearance, so they won't try to squeeze through gaps they can't fit through.</br>
+    - Every 0.4 seconds each enemy recalculates a path to the player through the walkable cells, following waypoints until they get close enough to walk straight at the player</br>
+    - Known bug: The heavy enemies (purple) can still get stuck on the opposite side of a wall when trying to reach the player likely due to their large size causing their start or goal cell to be marked as blocked
+
+    
