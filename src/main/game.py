@@ -50,8 +50,8 @@ class Game:
         self.seed = random.randrange(0, 2**32)
         self.Player._reset()
         #player starting weapons
-        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[8]))
-        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[7]))
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[0]))
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
