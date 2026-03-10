@@ -2,11 +2,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import random
 import pygame
-
+import copy
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu, ItemHUD
+from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD
 from main.keybindings import KeyBindings
+from main.weapon import WEAPON_CATALOGUE
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ class Game:
         self.title_screen = TitleScreen(self.w, self.h, self. font)
         self.settings_menu = SettingsMenu(self.w, self.h, self. font, self.bindings)
         self.item_hud = ItemHUD(self.w, self.h)
+        self.player_hud = PlayerHUD(self.w, self.h)
 
         self.events: list[pygame.event.Event] = []
         self._reset_run()
@@ -46,6 +48,7 @@ class Game:
 
     def _reset_run(self) -> None:
         self.Player._reset()
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
@@ -55,7 +58,7 @@ class Game:
         )
         self.dungeon = gen.generate()
 
-        # Place player at the centre of the start room
+        # Place player at the center of the start room
         self.Player.pos = pygame.Vector2(self.w // 2, self.h // 2)
         self.Player.rect.center = (self.w // 2, self.h // 2)
 
@@ -68,9 +71,12 @@ class Game:
                 return
             if event.key == pygame.K_F1:
                 self.debug = not self.debug
-            if event.key == pygame.K_r:
+            if event.key == pygame.K_y:
                 self.seed = random.randrange(0, 2**32)
                 self._reset_run()
+            if event.key == pygame.K_p and self.state in ("playing", "paused"):
+                self.state = "paused" if self.state == "playing" else "playing"
+
         self.events.append(event)
         return 
     
@@ -83,6 +89,24 @@ class Game:
             self.Player.update(dt, keys, self.events)
             self.Player.wall_collisions(self.dungeon.current_room.all_walls)
             self.dungeon.update(self.Player, dt)
+
+            walls = self.dungeon.current_room.all_walls
+            enemies = self.dungeon.current_room.enemies
+
+            for bullet in self.Player.bullets:
+                bullet.update(dt, walls)
+                for enemy in enemies:
+                    if enemy.alive:
+                        bullet.try_hit(enemy)
+            
+            for mh in self.Player.melee_hitboxes:
+                mh.update(dt)
+                for enemy in enemies:
+                    if enemy.alive:
+                        mh.try_hit(enemy)
+
+            self.Player.bullets = [b for b in self.Player.bullets if b.alive]
+            self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
 
 
     def draw(self) -> None:
@@ -105,6 +129,7 @@ class Game:
         self.dungeon.draw(self.screen, debug=self.debug)
         self.Player.draw(self.screen)
         self.item_hud.draw(self.screen, self.Player.items)
+        self.player_hud.draw(self.screen, self.Player)
         self._draw_dungeon_debug()
 
     def _draw_title(self) -> None:
@@ -122,7 +147,13 @@ class Game:
             self.state = "title"
 
     def _draw_paused(self) -> None:
-        pass
+        self._draw_playing()   # still shows game underneath
+        overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        self.screen.blit(overlay, (0, 0))
+        pause_font = pygame.font.SysFont(None, 72)
+        text = pause_font.render("PAUSED", True, pygame.Color("#ffffff"))
+        self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
 
     def _draw_gameover(self) -> None:
         pass

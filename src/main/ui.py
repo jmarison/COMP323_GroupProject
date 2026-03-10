@@ -334,3 +334,136 @@ class ItemHUD:
             pygame.draw.rect(slot_surf, pygame.Color(50, 50, 70, 200),
                              slot_surf.get_rect(), 1, border_radius=2)
             surface.blit(slot_surf, cell_r.topleft)
+
+
+# --- PlayerHUD - health bar, active weapon, and ammo ---
+_HP_BAR_W     = 200
+_HP_BAR_H     = 16
+_HP_BAR_X     = 12
+_HP_BAR_Y     = 12
+_WPN_PANEL_W  = 200
+_WPN_PANEL_H  = 52
+_WPN_PAD      = 8
+
+COL_HP_BG      = pygame.Color(40,  10,  10,  210)
+COL_HP_FILL    = pygame.Color("#e84040")
+COL_HP_FULL    = pygame.Color("#44ee44")
+COL_HP_BORDER  = pygame.Color("#664444")
+COL_WPN_BG     = pygame.Color(10,  10,  30,  200)
+COL_WPN_BORDER = pygame.Color("#3a3a5c")
+COL_AMMO_FULL  = pygame.Color("#ffe066")
+COL_AMMO_EMPTY = pygame.Color("#444422")
+COL_RELOAD     = pygame.Color("#ff9900")
+
+class PlayerHUD:
+    def __init__(self, screen_w: int, screen_h: int) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self._font_sm: pygame.font.Font | None = None
+        self._font_md: pygame.font.Font | None = None
+    
+    def draw(self, surface: pygame.Surface, player) -> None:
+        if self._font_sm is None:
+            self._font_sm = pygame.font.SysFont(None, 18)
+            self._font_md = pygame.font.SysFont(None, 22)
+        
+        self._draw_health(surface, player)
+        self._draw_weapon(surface, player)
+    
+
+    # --- health ---
+    def _draw_health(self, surface: pygame.Surface, player) -> None:
+        x, y = _HP_BAR_X, self.screen_h - _HP_BAR_Y - _HP_BAR_H - _WPN_PANEL_H - 6
+        bg = pygame.Surface((_HP_BAR_W, _HP_BAR_H), pygame.SRCALPHA)
+        bg.fill(COL_HP_BG)
+        surface.blit(bg, (x, y))
+
+        ratio = max(0.0, player.currHealth / player.maxHealth)
+        fill_w = int(_HP_BAR_W * ratio)
+        fill_col = COL_HP_FULL if ratio >= 0.99 else COL_HP_FILL
+        if fill_w > 0:
+            pygame.draw.rect(surface, fill_col, (x, y, fill_w, _HP_BAR_H))
+
+        pygame.draw.rect(surface, COL_HP_BORDER, (x, y, _HP_BAR_W, _HP_BAR_H), 2)
+        label = self._font_sm.render(
+            f"{player.currHealth} / {player.maxHealth}", True, pygame.Color("#ffffff")
+        )
+        lx = x + _HP_BAR_W // 2 - label.get_width() // 2
+        ly = y + _HP_BAR_H // 2 - label.get_height() // 2
+        surface.blit(label, (lx, ly))
+
+        tag = self._font_sm.render("HP", True, pygame.Color("#aaaaaa"))
+        surface.blit(tag, (x - tag.get_width() - 4, ly))
+
+
+    def _draw_weapon(self, surface: pygame.Surface, player) -> None:
+        x = _HP_BAR_X
+        y = self.screen_h - _HP_BAR_Y - _WPN_PANEL_H
+
+        panel = pygame.Surface((_WPN_PANEL_W, _WPN_PANEL_H), pygame.SRCALPHA)
+        panel.fill(COL_WPN_BG)
+        pygame.draw.rect(panel, COL_WPN_BORDER, panel.get_rect(), 2, border_radius=4)
+        surface.blit(panel, (x, y))
+
+        weapon = player.current_weapon
+        if weapon is None:
+            no_wpn = self._font_sm.render("No weapon", True, pygame.Color("#666666"))
+            surface.blit(no_wpn, (x + _WPN_PAD, y + _WPN_PANEL_H // 2 - no_wpn.get_height() // 2))
+            return
+
+        # weapon name
+        name_surf = self._font_md.render(weapon.name, True, pygame.Color("#ffffff"))
+        surface.blit(name_surf, (x + _WPN_PAD, y + 6))
+
+        # type badge
+        badge_text = "MELEE" if weapon.wtype == "melee" else "RANGED"
+        badge_col  = pygame.Color("#ff8888") if weapon.wtype == "melee" else pygame.Color("#88aaff")
+        badge_surf = self._font_sm.render(badge_text, True, badge_col)
+        surface.blit(badge_surf, (x + _WPN_PAD, y + 6 + name_surf.get_height() + 2))
+
+        # ammo display
+        if weapon.wtype == "ranged":
+            self._draw_ammo(surface, weapon, x, y)
+
+        # reload indicator
+        if weapon._reloading > 0:
+            progress = 1.0 - (weapon._reloading / weapon.RELOAD_TIME)
+            rel_w = int((_WPN_PANEL_W - _WPN_PAD * 2) * progress)
+            bar_y = y + _WPN_PANEL_H - 6
+            pygame.draw.rect(surface, pygame.Color("#333333"),
+                             (x + _WPN_PAD, bar_y, _WPN_PANEL_W - _WPN_PAD * 2, 4))
+            pygame.draw.rect(surface, COL_RELOAD,
+                             (x + _WPN_PAD, bar_y, rel_w, 4))
+
+    def _draw_ammo(self, surface: pygame.Surface, weapon, panel_x, panel_y) -> None:
+        if weapon.unlimited_ammo:
+            inf_surf = self._font_sm.render("∞", True, COL_AMMO_FULL)
+            surface.blit(inf_surf, (panel_x + _WPN_PANEL_W - inf_surf.get_width() - _WPN_PAD,
+                                    panel_y + 8))
+            return
+
+        # draw bullet in clip
+        pip_size  = 7
+        pip_gap   = 3
+        max_pips  = weapon.clip_size
+        per_row   = min(max_pips, 15)
+        start_x   = panel_x + _WPN_PANEL_W - _WPN_PAD - (per_row * (pip_size + pip_gap))
+        pip_y     = panel_y + 10
+
+        for i in range(max_pips):
+            col = i % per_row
+            row = i // per_row
+            px  = start_x + col * (pip_size + pip_gap)
+            py  = pip_y   + row * (pip_size + pip_gap + 1)
+            filled = i < weapon.curr_ammo
+            pygame.draw.rect(
+                surface,
+                COL_AMMO_FULL if filled else COL_AMMO_EMPTY,
+                (px, py, pip_size, pip_size),
+                0 if filled else 1,
+            )
+
+        reserve_text = f"x{weapon.reserve_clips}" if weapon.reserve_clips >= 0 else "∞"
+        rsv = self._font_sm.render(reserve_text, True, pygame.Color("#aaaaaa"))
+        surface.blit(rsv, (panel_x + _WPN_PANEL_W - rsv.get_width() - _WPN_PAD,
+                           panel_y + _WPN_PANEL_H - rsv.get_height() - 4))

@@ -1,42 +1,265 @@
+from __future__ import annotations
 import pygame
-from main.bullet import Bullet
+import math
+from main.entities import Bullet, MeleeHitbox
+
+
+class WeaponType:
+    MELEE  = "melee"
+    RANGED = "ranged"
+
 
 class Weapon:
-    def __init__(self, name: str, damage: int, maxAmmo: int, clipSize: int, range: int, isProj: bool, bullet: Bullet, fireRate: int) -> None:
+    def __init__(
+        self,
+        name:          str,
+        wtype:         str,
+        damage:        int,
+        fire_rate:     float,
+        color:         pygame.Color,
+        # ranged
+        bullet_speed:  float = 500.0,
+        bullet_range:  float = 400.0,
+        bullet_scale:  float = 1.0,
+        bullet_color:  str   = "default",
+        clip_size:     int   = -1,
+        reserve_clips: int   = -1,
+        pierce:        int   = 0,
+        spread_shots:  int   = 1,
+        spread_angle:  float = 0.0,
+        # melee
+        melee_radius:     float = 80.0,
+        melee_half_angle: float = 55.0, 
+
+    ) -> None:
         self.name = name
+        self.wtype = wtype
         self.damage = damage
-        self.range = range
-        self.fireRate = fireRate
-        self.sprite = pygame.rect((16, 16)) # TODO : replace with actual sprite
+        self.fire_rate = fire_rate   # attacks / second
+        self.color = color
 
-        #A max ammo of -1 is used for a melee/infinite ammo weapon
-        self.currAmmo : int
-        self.maxAmmo = maxAmmo
+        # ranged
+        self.bullet_speed = bullet_speed
+        self.bullet_range = bullet_range
+        self.bullet_scale = bullet_scale
+        self.bullet_color = bullet_color
+        self.clip_size = clip_size
+        self.reserve_clips = reserve_clips
+        self.pierce = pierce
+        self.spread_shots = spread_shots
+        self.spread_angle = spread_angle
 
-        self.reserveClips : int 
-        self.clipSize = clipSize
+        # melee
+        self.melee_radius = melee_radius
+        self.melee_half_angle = melee_half_angle
 
-        self.bullet: Bullet = bullet
-  
+        # runtime state
+        self.curr_ammo: int = clip_size      # -1 = unlimited
+        self._cooldown: float = 0.0            # seconds until next attack
+        self._reloading: float = 0.0            # reload timer
+        self.RELOAD_TIME: float = 1.2            # seconds
+
+        self._sprite: pygame.Surface | None = None
+
+    @property
+    def sprite(self) -> pygame.Surface:
+        if self._sprite is None:
+            surf = pygame.Surface((16,16), pygame.SRCALPHA)
+            surf.fill(self.color)
+            pygame.draw.rect(surf, pygame.Color("#ffffff"), surf.get_rect(), 1)
+            self._sprite = surf
+        return self._sprite
+    
+ # --- Ammo Helpers ---
+    @property
+    def unlimited_ammo(self) -> bool:
+        return self.clip_size == -1
+    
+    @property
+    def ammo_empty(self) -> bool:
+        return (not self.unlimited_ammo) and self.curr_ammo <= 0
+    
     def reload(self) -> None:
-        if self.maxAmmo == -1:
+        if self.unlimited_ammo:
             return
-        if self.reserveClips <= 0:
+        if self.reserve_clips == 0:
             return
-        if self.currAmmo == self.clipSize:
+        if self.curr_ammo == self.clip_size:
             return
-        self.reserveClips -= 1
-        self.currAmmo = self.clipSize
+        if self._reloading <= 0:
+            self._reloading = self.RELOAD_TIME
+
+# --- update ---
+    def update(self, dt: float) -> None:
+
+        if self._cooldown > 0:
+            self._cooldown -= dt
+
+        if self._reloading > 0:
+            self._reloading -= dt
+            if self._reloading <= 0:
+                self._reloading = 0.0
+                if self.reserve_clips > 0:
+                    self.reserve_clips -= 1
+                self.curr_ammo = self.clip_size
+
+    def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2) -> list[Bullet] | MeleeHitbox | None:
+        if self._cooldown > 0:
+            return None
+        if self._reloading > 0:
+            return None
         
-    def shoot(self) -> None:
-        if self.maxAmmo == -1:
-            return
-        if self.currAmmo > 0:
-            # TODO : spawn bullet here
+        if self.wtype == WeaponType.RANGED:
+            if not self.unlimited_ammo:
+                if self.curr_ammo <= 0:
+                    self.reload()
+                    return None
+                self.curr_ammo -= 1
             
-            self.currAmmo -= 1
+            self._cooldown = 1.0 / self.fire_rate
+            return self._spawn_bullets(origin, aim_dir)
+        
+        else: # melee
+            self._cooldown = 1.0 / self.fire_rate
+            return MeleeHitbox(origin = origin, direction = aim_dir, radius = self.melee_radius, half_angle = self.melee_half_angle, damage = self.damage, duration = self._cooldown * 0.6)
+        
+    def _spawn_bullets(self, origin: pygame.Vector2, aim_dir: pygame.Vector2) -> list[Bullet]:
+        bullets = []
+        if self.spread_shots <= 1:
+            bullets.append(self._make_bullet(origin, aim_dir))
         else:
-            self.reload()
-        
-        
-        
+            half = self.spread_angle / 2.0
+            step = self.spread_angle / (self.spread_shots - 1)
+            base_angle = pygame.Vector2(math.cos(rad), math.sin(rad))
+            bullets.append(self._make_bullet(origin, direction))
+        return bullets
+    
+    def _make_bullet(self, origin: pygame.Vector2, direction: pygame.Vector2) -> Bullet:
+        return Bullet(pos = origin, direction = direction, speed = self.bullet_speed, damage = self.damage, max_range = self.bullet_range, pierce = self.pierce, scale = self.bullet_scale, color_key = self.bullet_color)
+    
+    def __repr__(self) -> str:
+        return f"Weapon({self.name!r}, {self.wtype})"
+          
+
+
+# --- Weapon Catalogue  ---
+
+WEAPON_CATALOGUE: list[Weapon] = [
+
+    # --- Melee ---
+
+    Weapon(
+        name             = "Dagger",
+        wtype            = WeaponType.MELEE,
+        damage           = 18,
+        fire_rate        = 3.5,            # fast but short
+        color            = pygame.Color("#aaddff"),
+        melee_radius     = 60,
+        melee_half_angle = 35,
+    ),
+
+    Weapon(
+        name             = "Broadsword",
+        wtype            = WeaponType.MELEE,
+        damage           = 40,
+        fire_rate        = 1.6,            # slower, wide arc
+        color            = pygame.Color("#c0c0c0"),
+        melee_radius     = 95,
+        melee_half_angle = 65,
+    ),
+
+    Weapon(
+        name             = "War Hammer",
+        wtype            = WeaponType.MELEE,
+        damage           = 70,
+        fire_rate        = 0.9,            # slow but hits hard
+        color            = pygame.Color("#886644"),
+        melee_radius     = 80,
+        melee_half_angle = 45,
+    ),
+
+    Weapon(
+        name             = "Scythe",
+        wtype            = WeaponType.MELEE,
+        damage           = 30,
+        fire_rate        = 2.2,
+        color            = pygame.Color("#44ff88"),
+        melee_radius     = 110,            # long reach, thin arc
+        melee_half_angle = 28,
+    ),
+
+    # --- Ranged ---
+
+    Weapon(
+        name          = "Pistol",
+        wtype         = WeaponType.RANGED,
+        damage        = 15,
+        fire_rate     = 3.0,
+        color         = pygame.Color("#ffdd44"),
+        bullet_speed  = 520,
+        bullet_range  = 450,
+        bullet_scale  = 1.0,
+        bullet_color  = "default",
+        clip_size     = 8,
+        reserve_clips = 4,
+    ),
+
+    Weapon(
+        name          = "Shotgun",
+        wtype         = WeaponType.RANGED,
+        damage        = 12,               # per pellet
+        fire_rate     = 1.2,
+        color         = pygame.Color("#ffaa44"),
+        bullet_speed  = 440,
+        bullet_range  = 250,
+        bullet_scale  = 0.85,
+        bullet_color  = "shotgun",
+        clip_size     = 4,
+        reserve_clips = 3,
+        spread_shots  = 5,
+        spread_angle  = 28.0,
+    ),
+
+    Weapon(
+        name          = "SMG",
+        wtype         = WeaponType.RANGED,
+        damage        = 8,
+        fire_rate     = 10.0,
+        color         = pygame.Color("#cc88ff"),
+        bullet_speed  = 480,
+        bullet_range  = 340,
+        bullet_scale  = 0.7,
+        bullet_color  = "smg",
+        clip_size     = 30,
+        reserve_clips = 3,
+    ),
+
+    Weapon(
+        name          = "Sniper Rifle",
+        wtype         = WeaponType.RANGED,
+        damage        = 90,
+        fire_rate     = 0.7,
+        color         = pygame.Color("#44ffcc"),
+        bullet_speed  = 950,
+        bullet_range  = 960,              # crosses the full screen
+        bullet_scale  = 1.2,
+        bullet_color  = "sniper",
+        clip_size     = 3,
+        reserve_clips = 5,
+        pierce        = 2,
+    ),
+
+    Weapon(
+        name          = "Grenade Launcher",
+        wtype         = WeaponType.RANGED,
+        damage        = 55,
+        fire_rate     = 0.9,
+        color         = pygame.Color("#ff6644"),
+        bullet_speed  = 300,
+        bullet_range  = 380,
+        bullet_scale  = 2.0,
+        bullet_color  = "heavy",
+        clip_size     = 2,
+        reserve_clips = 4,
+    ),
+]

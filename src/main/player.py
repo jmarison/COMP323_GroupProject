@@ -1,7 +1,9 @@
 import pygame
-from main.weapon import Weapon
+from main.entities import Bullet, MeleeHitbox
+from main.weapon import Weapon, WeaponType
 from main.item import Item
 from main.keybindings import KeyBindings
+
 
 class ControlScheme:
     def __init__(self, bindings: KeyBindings) -> None:
@@ -32,7 +34,10 @@ class ControlScheme:
             return False
         return event.key in self.bindings.action_keys().get(action, set())
 
-
+    def aim_held(self, keys) -> bool:
+        # this is basically used for autofire
+        aim = self.bindings.aim_keys()
+        return any(any(keys[k] for k in aim[d]) for d in ("left", "right", "up", "down"))
 
 class Player(pygame.sprite.Sprite):
     MAX_WEAPONS = 2
@@ -57,6 +62,10 @@ class Player(pygame.sprite.Sprite):
         # --- items ---
         self.items: list[Item] = []
 
+        # --- projectiles that are currently alive from player ---
+        self.bullets: list[Bullet] = []
+        self.melee_hitboxes: list[MeleeHitbox] = []
+
         # --- sprite + position ---
         self.image = pygame.Surface(self.PLAYER_SIZE, pygame.SRCALPHA)
         self.image.fill(self.COLOR)
@@ -70,8 +79,10 @@ class Player(pygame.sprite.Sprite):
         self._handle_movement(dt, keys)
         self._handle_aim(keys)
         self._handle_weapon_switch(events)
+        self._handle_attack(dt, keys, events)
+        self._update_weapon_cooldowns(dt)
 
-    # --- movement ---
+    # --- movement handler---
     def _handle_movement(self, dt:float, keys) -> None:
         direction = self.controls.read_move(keys)
         self.pos += direction * self.speed * dt
@@ -100,13 +111,13 @@ class Player(pygame.sprite.Sprite):
             self.pos.x = self.rect.centerx
             self.pos.y = self.rect.centery
     
-    # -- aiming ---
+    # -- aiming handler---
     def _handle_aim(self, keys) -> None:
         aim = self.controls.read_aim(keys)
         if aim.length_squared() > 0:
             self.aim_dir = aim
 
-    # --- weapons system --- 
+    # --- weapons system handler--- 
     def _handle_weapon_switch(self, events: list[pygame.event.Event]) -> None:
         for event in events:
             if self.controls.action_pressed("weapon_next", event):
@@ -135,7 +146,28 @@ class Player(pygame.sprite.Sprite):
     @property
     def current_weapon(self) -> Weapon | None:
         return self.weaponInv[self.currWeaponIndex] if self.weaponInv else None
-    
+
+    # --- Attack handler ---
+    def _handle_attack(self, dt:float, keys, events: list[pygame.event.Event]) -> None:
+        weapon = self.current_weapon
+        if weapon is None:
+            return
+        if not self.controls.aim_held(keys):
+            return
+        result = weapon.try_attack(origin = pygame.Vector2(self.rect.center), aim_dir = self.aim_dir)
+        if result is None:
+            return
+        
+        if isinstance(result, list):
+            self.bullets.extend(result)
+        elif isinstance(result, MeleeHitbox):
+            self.melee_hitboxes.append(result)
+
+    def _update_weapon_cooldowns(self, dt: float) -> None:
+        for w in self.weaponInv:
+            w.update(dt)
+
+
     # --- Health ---
     def take_damage(self, amount: int) -> None:
         self.currHealth = max(0, self.currHealth - amount)
@@ -152,11 +184,17 @@ class Player(pygame.sprite.Sprite):
         self.weaponInv = []
         self.currWeaponIndex = 0
         self.currHealth = self.maxHealth
+        self.bullets = []
+        self.melee_hitboxes = []
     
     # --- Drawing --- 
     def draw(self, surface: pygame.Surface) -> None:
         surface.blit(self.image, self.rect)
         self._draw_aim_line(surface)
+        for b in self.bullets:
+            b.draw(surface)
+        for mh in self.melee_hitboxes:
+            mh.draw(surface)
 
     def _draw_aim_line(self, surface: pygame.Surface) -> None:
         start = pygame.Vector2(self.rect.center)
