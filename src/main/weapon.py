@@ -130,8 +130,12 @@ class Weapon:
         else:
             half = self.spread_angle / 2.0
             step = self.spread_angle / (self.spread_shots - 1)
-            base_angle = pygame.Vector2(math.cos(rad), math.sin(rad))
-            bullets.append(self._make_bullet(origin, direction))
+            base_angle = math.degrees(math.atan2(aim_dir.y, aim_dir.x))
+            for i in range(self.spread_shots):
+                angle = base_angle - half + step * i
+                rad = math.radians(angle)
+                direction = pygame.Vector2(math.cos(rad), math.sin(rad))
+                bullets.append(self._make_bullet(origin, direction))
         return bullets
     
     def _make_bullet(self, origin: pygame.Vector2, direction: pygame.Vector2) -> Bullet:
@@ -149,117 +153,117 @@ WEAPON_CATALOGUE: list[Weapon] = [
     # --- Melee ---
 
     Weapon(
-        name             = "Dagger",
-        wtype            = WeaponType.MELEE,
-        damage           = 18,
-        fire_rate        = 3.5,            # fast but short
-        color            = pygame.Color("#aaddff"),
-        melee_radius     = 60,
+        name = "Dagger",
+        wtype = WeaponType.MELEE,
+        damage = 18,
+        fire_rate = 3.5,            # fast but short
+        color= pygame.Color("#aaddff"),
+        melee_radius= 90,
         melee_half_angle = 35,
     ),
 
     Weapon(
-        name             = "Broadsword",
-        wtype            = WeaponType.MELEE,
-        damage           = 40,
-        fire_rate        = 1.6,            # slower, wide arc
-        color            = pygame.Color("#c0c0c0"),
-        melee_radius     = 95,
-        melee_half_angle = 65,
+        name = "Broadsword",
+        wtype = WeaponType.MELEE,
+        damage = 40,
+        fire_rate = 1.7,  # slower, wide arc
+        color = pygame.Color("#c0c0c0"),
+        melee_radius= 120,
+        melee_half_angle = 55,
     ),
 
     Weapon(
-        name             = "War Hammer",
-        wtype            = WeaponType.MELEE,
-        damage           = 70,
-        fire_rate        = 0.9,            # slow but hits hard
-        color            = pygame.Color("#886644"),
-        melee_radius     = 80,
+        name = "War Hammer",
+        wtype = WeaponType.MELEE,
+        damage = 70,
+        fire_rate = 0.9,            # slow but hits hard
+        color = pygame.Color("#886644"),
+        melee_radius = 145,
         melee_half_angle = 45,
     ),
 
     Weapon(
-        name             = "Scythe",
-        wtype            = WeaponType.MELEE,
-        damage           = 30,
-        fire_rate        = 2.2,
-        color            = pygame.Color("#44ff88"),
-        melee_radius     = 110,            # long reach, thin arc
+        name = "Scythe",
+        wtype = WeaponType.MELEE,
+        damage = 30,
+        fire_rate = 2.2,
+        color = pygame.Color("#44ff88"),
+        melee_radius = 110,            # long reach, thin arc
         melee_half_angle = 28,
     ),
 
     # --- Ranged ---
 
     Weapon(
-        name          = "Pistol",
-        wtype         = WeaponType.RANGED,
-        damage        = 15,
-        fire_rate     = 3.0,
-        color         = pygame.Color("#ffdd44"),
-        bullet_speed  = 520,
-        bullet_range  = 450,
-        bullet_scale  = 1.0,
-        bullet_color  = "default",
-        clip_size     = 8,
-        reserve_clips = 4,
+        name = "Pistol",
+        wtype = WeaponType.RANGED,
+        damage = 15,
+        fire_rate = 3.0,
+        color = pygame.Color("#ffdd44"),
+        bullet_speed = 520,
+        bullet_range = 450,
+        bullet_scale = 1.0,
+        bullet_color = "default",
+        clip_size = 8,
+        reserve_clips = 6,
     ),
 
     Weapon(
-        name          = "Shotgun",
-        wtype         = WeaponType.RANGED,
-        damage        = 12,               # per pellet
-        fire_rate     = 1.2,
-        color         = pygame.Color("#ffaa44"),
-        bullet_speed  = 440,
-        bullet_range  = 250,
-        bullet_scale  = 0.85,
-        bullet_color  = "shotgun",
-        clip_size     = 4,
-        reserve_clips = 3,
-        spread_shots  = 5,
-        spread_angle  = 28.0,
+        name = "Shotgun",
+        wtype = WeaponType.RANGED,
+        damage = 12,               # per pellet
+        fire_rate = 1.2,
+        color = pygame.Color("#ffaa44"),
+        bullet_speed = 440,
+        bullet_range = 250,
+        bullet_scale = 0.85,
+        bullet_color = "shotgun",
+        clip_size = 4,
+        reserve_clips = 6,
+        spread_shots = 5,
+        spread_angle = 28.0,
     ),
 
     Weapon(
-        name          = "SMG",
-        wtype         = WeaponType.RANGED,
-        damage        = 8,
-        fire_rate     = 10.0,
-        color         = pygame.Color("#cc88ff"),
-        bullet_speed  = 480,
-        bullet_range  = 340,
-        bullet_scale  = 0.7,
-        bullet_color  = "smg",
-        clip_size     = 30,
-        reserve_clips = 3,
+        name = "SMG",
+        wtype = WeaponType.RANGED,
+        damage = 8,
+        fire_rate = 10.0,
+        color = pygame.Color("#cc88ff"),
+        bullet_speed = 480,
+        bullet_range = 340,
+        bullet_scale = 0.7,
+        bullet_color = "smg",
+        clip_size = 30,
+        reserve_clips = 6,
     ),
 
     Weapon(
-        name          = "Sniper Rifle",
-        wtype         = WeaponType.RANGED,
-        damage        = 90,
-        fire_rate     = 0.7,
-        color         = pygame.Color("#44ffcc"),
-        bullet_speed  = 950,
-        bullet_range  = 960,              # crosses the full screen
-        bullet_scale  = 1.2,
-        bullet_color  = "sniper",
-        clip_size     = 3,
-        reserve_clips = 5,
-        pierce        = 2,
+        name = "Sniper Rifle",
+        wtype = WeaponType.RANGED,
+        damage = 90,
+        fire_rate = 0.7,
+        color = pygame.Color("#44ffcc"),
+        bullet_speed = 950,
+        bullet_range = 960,              # crosses the full screen
+        bullet_scale = 1.2,
+        bullet_color = "sniper",
+        clip_size = 3,
+        reserve_clips = 7,
+        pierce = 2,
     ),
 
     Weapon(
-        name          = "Grenade Launcher",
-        wtype         = WeaponType.RANGED,
-        damage        = 55,
-        fire_rate     = 0.9,
-        color         = pygame.Color("#ff6644"),
-        bullet_speed  = 300,
-        bullet_range  = 380,
-        bullet_scale  = 2.0,
-        bullet_color  = "heavy",
-        clip_size     = 2,
-        reserve_clips = 4,
+        name = "Grenade Launcher",
+        wtype = WeaponType.RANGED,
+        damage = 55,
+        fire_rate = 0.9,
+        color = pygame.Color("#ff6644"),
+        bullet_speed = 300,
+        bullet_range = 380,
+        bullet_scale = 2.0,
+        bullet_color = "heavy",
+        clip_size = 2,
+        reserve_clips = 6,
     ),
 ]

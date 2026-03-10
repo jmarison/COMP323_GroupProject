@@ -331,7 +331,7 @@ class Bullet:
     def try_hit(self, enemy: Enemy) -> bool:
         if not self.alive:
             return False
-        eid = id(Enemy)
+        eid = id(enemy)
         if eid in self._hit_ids:
             return False
         if not enemy.rect.collidepoint(int(self.pos.x), int(self.pos.y)):

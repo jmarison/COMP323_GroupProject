@@ -47,8 +47,11 @@ class Game:
     # -------------------------------- reset  -------------------------------------- #
 
     def _reset_run(self) -> None:
+        self.seed = random.randrange(0, 2**32)
         self.Player._reset()
-        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
+        #player starting weapons
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[8]))
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[7]))
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
@@ -76,6 +79,9 @@ class Game:
                 self._reset_run()
             if event.key == pygame.K_p and self.state in ("playing", "paused"):
                 self.state = "paused" if self.state == "playing" else "playing"
+            if event.key == pygame.K_SPACE and self.state == "gameover":
+                self._reset_run()
+                self.state = "playing"
 
         self.events.append(event)
         return 
@@ -107,6 +113,9 @@ class Game:
 
             self.Player.bullets = [b for b in self.Player.bullets if b.alive]
             self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
+
+            if self.Player.is_dead:
+                self.state = "gameover"
 
 
     def draw(self) -> None:
@@ -156,7 +165,16 @@ class Game:
         self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
 
     def _draw_gameover(self) -> None:
-        pass
+        self._draw_playing()
+        overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        self.screen.blit(overlay, (0, 0))
+        go_font = pygame.font.SysFont(None, 72)
+        text = go_font.render("GAME OVER", True, pygame.Color("#ff4444"))
+        self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
+        hint_font = pygame.font.SysFont(None, 28)
+        hint = hint_font.render("SPACE / Y  —  New Run", True, pygame.Color("#aaaaaa"))
+        self.screen.blit(hint, (self.w // 2 - hint.get_width() // 2, self.h // 2 + 50))
 
     def _draw_dungeon_debug(self) -> None:
         if self.debug:
