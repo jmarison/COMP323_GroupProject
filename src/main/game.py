@@ -99,6 +99,10 @@ class Game:
             walls = self.dungeon.current_room.all_walls
             enemies = self.dungeon.current_room.enemies
 
+            for enemy in enemies:
+                if enemy.alive and enemy.hitbox.colliderect(self.Player.hitbox):
+                    self.Player.take_damage(enemy.damage)
+
             for bullet in self.Player.bullets:
                 bullet.update(dt, walls)
                 for enemy in enemies:
@@ -117,7 +121,7 @@ class Game:
             if self.Player.is_dead:
                 self.state = "gameover"
 
-
+# ------------------------------ Draw ---------------------------------------- #
     def draw(self) -> None:
         self.screen.fill(PALETTE.background)
         if self.state == "title":
@@ -133,10 +137,11 @@ class Game:
 
         self.events.clear()
 
+# --- Draw states --- 
     def _draw_playing(self) -> None:
         # Draw the active room first, then the player on top for layering
         self.dungeon.draw(self.screen, debug=self.debug)
-        self.Player.draw(self.screen)
+        self.Player.draw(self.screen, debug = self.debug)
         self.item_hud.draw(self.screen, self.Player.items)
         self.player_hud.draw(self.screen, self.Player)
         self._draw_dungeon_debug()
@@ -180,11 +185,12 @@ class Game:
         if self.debug:
             room = self.dungeon.current_room
             info = self.font.render(
-                f"Room {room.id} | {room.type.value.upper()} | F1=debug  R=regenerate dungeon",
+                f"Room {room.id} | {room.type.value.upper()} | F1=debug  Y=regenerate dungeon",
                 True, pygame.Color("#ffffff"),
             )
             self.screen.blit(info, (8, self.h - 28))
-    
+
+    # ------ Draw Helpers -------
     def _draw_text(self, text: str, pos: tuple[int, int], color: pygame.Color) -> None:
         s = self.font.render(text, True, color)
         self.screen.blit(s, pos)

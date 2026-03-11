@@ -42,18 +42,21 @@ class ControlScheme:
 class Player(pygame.sprite.Sprite):
     MAX_WEAPONS = 2
     PLAYER_SIZE = (32, 48)
+    HITBOX_SIZE = (22, 34)
     COLOR = pygame.Color("#4fc3f7")
-
+    IFRAME_DURATION = 1.2
 
     def __init__(self, pos: tuple[int, int], bindings: KeyBindings) -> None:
         super().__init__()
 
         # --- player stats ---
-        self.maxHealth: int = 200
+        self.maxHealth: int = 50
         self.currHealth: int  = self.maxHealth
         self.speed : int = 300
 
         self.controls = ControlScheme(bindings)
+
+        self._iframes: float = 0.0
 
         # --- weapons ---
         self.weaponInv: list[Weapon] = []
@@ -70,12 +73,16 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.Surface(self.PLAYER_SIZE, pygame.SRCALPHA)
         self.image.fill(self.COLOR)
         self.rect = self.image.get_rect(center=pos)
+        self.hitbox = pygame.Rect(0, 0, *self.HITBOX_SIZE)
+        self.hitbox.center = self.rect.center
         self.pos = pygame.Vector2(pos)
         self.aim_dir = pygame.Vector2(1,0)
 
     # --- core update loop ----
 
     def update(self, dt: float, keys, events: list[pygame.event.Event]) -> None: 
+        if self._iframes > 0:
+            self._iframes -= dt
         self._handle_movement(dt, keys)
         self._handle_aim(keys)
         self._handle_weapon_switch(events)
@@ -87,20 +94,20 @@ class Player(pygame.sprite.Sprite):
         direction = self.controls.read_move(keys)
         self.pos += direction * self.speed * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
-
+        self.hitbox.center = self.rect.center
     # --- Collision --- 
     def wall_collisions(self, walls: list) -> None:
         for wall in walls:
             if not self.rect.colliderect(wall.rect):
                 continue
 
-            dx_left  = self.rect.right  - wall.rect.left   
+            dx_left = self.rect.right  - wall.rect.left   
             dx_right = wall.rect.right  - self.rect.left   
-            dy_up    = self.rect.bottom - wall.rect.top    
-            dy_down  = wall.rect.bottom - self.rect.top     
+            dy_up = self.rect.bottom - wall.rect.top    
+            dy_down = wall.rect.bottom - self.rect.top     
 
-            min_x = dx_left  if dx_left  < dx_right else -dx_right
-            min_y = dy_up    if dy_up    < dy_down  else -dy_down
+            min_x = dx_left if dx_left < dx_right else -dx_right
+            min_y = dy_up if dy_up < dy_down else -dy_down
 
             if abs(min_x) < abs(min_y):
                 self.rect.x -= min_x
@@ -110,7 +117,8 @@ class Player(pygame.sprite.Sprite):
             # Keep pos in sync with rect
             self.pos.x = self.rect.centerx
             self.pos.y = self.rect.centery
-    
+        self.hitbox.center = self.rect.center
+
     # -- aiming handler---
     def _handle_aim(self, keys) -> None:
         aim = self.controls.read_aim(keys)
@@ -170,7 +178,10 @@ class Player(pygame.sprite.Sprite):
 
     # --- Health ---
     def take_damage(self, amount: int) -> None:
+        if self._iframes > 0:
+            return
         self.currHealth = max(0, self.currHealth - amount)
+        self._iframes = self.IFRAME_DURATION
 
     def heal(self, amount: int) -> None:
         self.currHealth = min(self.maxHealth, self.currHealth + amount)
@@ -186,15 +197,19 @@ class Player(pygame.sprite.Sprite):
         self.currHealth = self.maxHealth
         self.bullets = []
         self.melee_hitboxes = []
+        self._iframes = 0.0
     
     # --- Drawing --- 
-    def draw(self, surface: pygame.Surface) -> None:
-        surface.blit(self.image, self.rect)
+    def draw(self, surface: pygame.Surface, debug: bool = False) -> None:
+        if self._iframes <= 0 or int(self._iframes * 30) % 2 == 0:
+            surface.blit(self.image, self.rect)
         self._draw_aim_line(surface)
         for b in self.bullets:
             b.draw(surface)
         for mh in self.melee_hitboxes:
             mh.draw(surface)
+        if debug:
+            pygame.draw.rect(surface, pygame.Color("#00ff00"), self.hitbox, 1)
 
     def _draw_aim_line(self, surface: pygame.Surface) -> None:
         start = pygame.Vector2(self.rect.center)

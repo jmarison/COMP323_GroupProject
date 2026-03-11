@@ -72,7 +72,7 @@ class Dungeon:
         # Update enemies and hazards in the current room
         self.current_room.update(dt, player)
 
-        result = self.current_room.check_transition(player.rect)
+        result = self.current_room.check_transition(player.hitbox)
         if result is None:
             return False
 
@@ -107,14 +107,6 @@ class Dungeon:
 
 
 class DungeonGenerator:
-    """
-    seed : RNG seed (int or None for random)
-    num_normal_rooms : how many NORMAL rooms to include
-    screen_size : pixel dimensions of the screen / room
-    grid_cols : width of the logical grid
-    grid_rows : height of the logical grid
-    """
-
     def __init__(
         self,
         seed:             Optional[int]   = None,

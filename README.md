@@ -5,7 +5,7 @@ By Jacob Marison and Gabe Lazatin
 - WASD: move
 - IJKL: aim
 - `F1`: toggle dungeon debug overlay 
-- `R`: generate new dungeon
+- `Y`: generate new dungeon
 - `Esc`: quit
 
 ## Run

@@ -159,8 +159,7 @@ MINI_GAME_ROOM_LAYOUTS: list[dict] = [
     # Layout 0 — three pedestals in a row across the center
     {
         "walls": [
-            (16, H // 2 - 20, 250, 16),
-            (W - 266, H // 2 - 20, 250, 16),
+
         ],
         "hazards":   [],
         "enemies":   [],
@@ -183,22 +182,4 @@ MINI_GAME_ROOM_LAYOUTS: list[dict] = [
         ],
     },
 
-    # Layout 2 — pedestals separated by decorative pillars
-    {
-        "walls": [
-            (W // 4 - 44, H // 2 - 64, 16, 88),
-            (W // 4 + 28, H // 2 - 64, 16, 88),
-            (W // 2 - 24, H // 2 - 64, 16, 88),
-            (W // 2 + 8, H // 2 - 64, 16, 88),
-            (W * 3 // 4 - 44, H // 2 - 64, 16, 88),
-            (W * 3 // 4 + 28, H // 2 - 64, 16, 88),
-        ],
-        "hazards":   [],
-        "enemies":   [],
-        "pedestals": [
-            (W // 4, H // 2 - 20),
-            (W // 2, H // 2 - 20),
-            (W * 3 // 4, H // 2 - 20),
-        ],
-    },
 ]

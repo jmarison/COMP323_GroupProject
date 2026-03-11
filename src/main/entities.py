@@ -39,12 +39,17 @@ class Hazard:
         HazardType.LAVA:  pygame.Color("#ff4500"),
     }
 
-    def __init__(self, x: int, y: int, w: int, h: int,
+    def __init__(self, 
+                 x: int, 
+                 y: int, 
+                 w: int, 
+                 h: int,
                  hazard_type: str = HazardType.SPIKE,
-                 damage: int = 10) -> None:
-        self.rect        = pygame.Rect(x, y, w, h)
+                 damage: int = 10
+                 ) -> None:
+        self.rect  = pygame.Rect(x, y, w, h)
         self.hazard_type = hazard_type
-        self.damage      = damage
+        self.damage= damage
 
     def draw(self, surface: pygame.Surface) -> None:
         color = self.COLORS.get(self.hazard_type, pygame.Color("#ff0000"))
@@ -152,12 +157,12 @@ class EnemyType:
 
 
 _ENEMY_STATS = {
-    EnemyType.BASIC: {"hp": 40,  "speed": 135,  "damage": 10, "color": "#e74c3c", "size": (24, 24)},
-    EnemyType.FAST:  {"hp": 20,  "speed": 200, "damage": 5,  "color": "#e67e22", "size": (18, 18)},
-    EnemyType.HEAVY: {"hp": 120, "speed": 80,  "damage": 25, "color": "#8e44ad", "size": (36, 36)},
+    EnemyType.BASIC: {"hp": 40,  "speed": 135,  "damage": 10, "color": "#e74c3c", "size": (24, 24), "hitbox": (16, 16)},
+    EnemyType.FAST:  {"hp": 20,  "speed": 200, "damage": 5,  "color": "#e67e22", "size": (18, 18), "hitbox": (12, 12)},
+    EnemyType.HEAVY: {"hp": 120, "speed": 80,  "damage": 25, "color": "#8e44ad", "size": (36, 36), "hitbox": (26, 26)},
 }
 # this is how often the enemy recalcs its path
-_REPATH_INTERVAL = 0.4
+_REPATH_INTERVAL = 0.2
 _DIRECT_CHASE_DIST = CELL_SIZE * 2
 
 class Enemy:
@@ -171,6 +176,9 @@ class Enemy:
         self.color = pygame.Color(stats["color"])
         w, h = stats["size"]
         self.rect = pygame.Rect(x - w // 2, y - h // 2, w, h)
+        hw, hh = stats["hitbox"] # hw is hitbox width, hh is hitbox height
+        self.hitbox = pygame.Rect(0, 0, hw, hh)
+        self.hitbox.center = self.rect.center
         self.pos = pygame.Vector2(x, y)
         self.alive = True
 
@@ -204,6 +212,7 @@ class Enemy:
 
         self.pos += direction * self.speed * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
+        self.hitbox.center = self.rect.center
 
         # wall pushout 
         if walls:
@@ -254,7 +263,7 @@ class Enemy:
                 self.rect.y -= min_y
             self.pos.x = self.rect.centerx
             self.pos.y = self.rect.centery
-
+        self.hitbox.center = self.rect.center
 
 
 
@@ -264,7 +273,7 @@ class Enemy:
         if self.hp <= 0:
             self.alive = False
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def draw(self, surface: pygame.Surface, debug: bool = False) -> None:
         if not self.alive:
             return
         pygame.draw.rect(surface, self.color, self.rect)
@@ -276,6 +285,8 @@ class Enemy:
         pygame.draw.rect(surface, pygame.Color("#333333"), (bar_x, bar_y, bar_w, bar_h))
         fill = int(bar_w * max(self.hp, 0) / _ENEMY_STATS[self.type]["hp"])
         pygame.draw.rect(surface, pygame.Color("#00cc44"), (bar_x, bar_y, fill, bar_h))
+        if debug:
+            pygame.draw.rect(surface, pygame.Color("#ff4400"), self.hitbox, 1)
 
 
 # --- Bullet ---
@@ -334,7 +345,7 @@ class Bullet:
         eid = id(enemy)
         if eid in self._hit_ids:
             return False
-        if not enemy.rect.collidepoint(int(self.pos.x), int(self.pos.y)):
+        if not enemy.hitbox.collidepoint(int(self.pos.x), int(self.pos.y)):
             return False
         enemy.take_damage(self.damage)
         self._hit_ids.add(eid)
@@ -387,7 +398,7 @@ class MeleeHitbox:
         if eid in self._hit_ids:
             return False
 
-        to_enemy = pygame.Vector2(enemy.rect.center) - self.origin
+        to_enemy = pygame.Vector2(enemy.hitbox.center) - self.origin
         dist = to_enemy.length()
         if dist > self.radius: 
             return False

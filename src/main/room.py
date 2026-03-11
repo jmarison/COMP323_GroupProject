@@ -192,7 +192,7 @@ class Room:
             enemy.update(dt, player_pos, walls)
 
         for hazard in self.hazards:
-            if hazard.collides(player.rect):
+            if hazard.collides(player.hitbox):
                 player.take_damage(hazard.damage)
 
         for pedestal in self.pedestals:
@@ -247,7 +247,7 @@ class Room:
         for hazard in self.hazards:
             hazard.draw(surface)
         for enemy in self.enemies:
-            enemy.draw(surface)
+            enemy.draw(surface, debug = debug)
         for pedestal in self.pedestals:
             pedestal.draw(surface, debug=debug)
 
