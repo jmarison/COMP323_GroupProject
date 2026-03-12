@@ -53,7 +53,7 @@ class Player(pygame.sprite.Sprite):
         self.base_max_health: int = 50
         self.maxHealth: int = self.base_max_health
         self.currHealth: int  = self.maxHealth
-        self.base_speed : int = 300
+        self.base_speed : int = 275
         self.speed : int = self.base_speed
 
         self.controls = ControlScheme(bindings)

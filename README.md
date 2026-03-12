@@ -9,14 +9,7 @@ By Jacob Marison
 - `Esc`: quit
 
 ## Run
-From this Folder:
-    python3 pip install -r requirements.txt
-    cd /src/
+<h3> From this Folder: </h3>
+    python -m pip install -r requirements.txt </br>
+    cd src</br>
     python main.py
-
-## Game Loop
-
-
-## Future Plans
-
- 

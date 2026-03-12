@@ -17,7 +17,7 @@ from main.weapon import WEAPON_CATALOGUE
 
 GRID_COLS = 8
 GRID_ROWS = 8
-DEFAULT_NORMALS  = 8
+DEFAULT_NORMALS  = 10
 MAX_GEN_ATTEMPTS = 200
 
 
@@ -27,9 +27,9 @@ def _build_layout(
     room_type: RoomType,
 ) -> tuple[list[Wall], list[Hazard], list[Enemy], list[ItemPedestal]]:
 
-    walls   = [Wall(*w)   for w in layout["walls"]]
+    walls = [Wall(*w) for w in layout["walls"]]
     hazards = [Hazard(*h) for h in layout["hazards"]]
-    enemies = [Enemy(*e)  for e in layout["enemies"]]
+    enemies = [Enemy(*e)for e in layout["enemies"]]
 
     pedestals: list[ItemPedestal] = []
     if room_type == RoomType.MINI_GAME:
@@ -60,7 +60,7 @@ class Dungeon:
         start_id: int,
         screen_size: tuple[int, int] = (960, 540),
     ) -> None:
-        self.rooms      = rooms
+        self.rooms = rooms
         self.current_id = start_id
         self.screen_w, self.screen_h = screen_size
         self.current_room.on_player_enter()
@@ -114,18 +114,18 @@ class Dungeon:
 class DungeonGenerator:
     def __init__(
         self,
-        seed:             Optional[int]   = None,
-        num_normal_rooms: int             = DEFAULT_NORMALS,
-        screen_size:      tuple[int, int] = (960, 540),
-        grid_cols:        int             = GRID_COLS,
-        grid_rows:        int             = GRID_ROWS,
+        seed: Optional[int] = None,
+        num_normal_rooms: int = DEFAULT_NORMALS,
+        screen_size: tuple[int, int] = (960, 540),
+        grid_cols: int = GRID_COLS,
+        grid_rows: int = GRID_ROWS,
     ) -> None:
-        self.seed             = seed if seed is not None else random.randrange(0, 2**32)
-        self.rng              = random.Random(self.seed)
+        self.seed = seed if seed is not None else random.randrange(0, 2**32)
+        self.rng = random.Random(self.seed)
         self.num_normal_rooms = num_normal_rooms
-        self.screen_size      = screen_size
-        self.grid_cols        = grid_cols
-        self.grid_rows        = grid_rows
+        self.screen_size = screen_size
+        self.grid_cols = grid_cols
+        self.grid_rows = grid_rows
 
     def generate(self) -> Dungeon:
         for attempt in range(MAX_GEN_ATTEMPTS):
@@ -133,6 +133,7 @@ class DungeonGenerator:
             if dungeon is not None:
                 return dungeon
         raise RuntimeError(
+            #if fails to generate
             f"DungeonGenerator failed after {MAX_GEN_ATTEMPTS} attempts "
             f"(seed={self.seed}, normals={self.num_normal_rooms}, "
             f"grid={self.grid_cols}x{self.grid_rows}). "
