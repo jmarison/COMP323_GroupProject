@@ -200,9 +200,9 @@ class EnemyType:
 
 
 _ENEMY_STATS = {
-    EnemyType.BASIC: {"hp": 65,  "speed": 75,  "damage": 15, "color": "#e74c3c", "size": (24, 24), "hitbox": (18, 18)},
-    EnemyType.FAST:  {"hp": 35,  "speed": 90, "damage": 10,  "color": "#e67e22", "size": (18, 18), "hitbox": (16, 16)},
-    EnemyType.HEAVY: {"hp": 120, "speed": 65,  "damage": 25, "color": "#8e44ad", "size": (36, 36), "hitbox": (26, 26)},
+    EnemyType.BASIC: {"hp": 70,  "speed": 100,  "damage": 15, "color": "#e74c3c", "size": (24, 24), "hitbox": (18, 18)},
+    EnemyType.FAST:  {"hp": 40,  "speed": 125, "damage": 10,  "color": "#e67e22", "size": (18, 18), "hitbox": (16, 16)},
+    EnemyType.HEAVY: {"hp": 120, "speed": 80,  "damage": 25, "color": "#8e44ad", "size": (36, 36), "hitbox": (26, 26)},
 }
 
 _REPATH_INTERVAL = 0.2 # how often enemy recalcs its path
