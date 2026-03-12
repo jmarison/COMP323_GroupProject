@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from main.entities import Wall, Hazard, Enemy, _build_nav_grid
 from main.item import ItemPedestal
+from main.weapon import Weapon
 import pygame
 
 
@@ -12,6 +13,7 @@ class RoomType(Enum):
     START = "start"
     BOSS = "boss"
     MINI_GAME = "mini_game"
+    WEAPON_SHOP = "weapon_shop"
 
 
 class Direction(Enum):
@@ -29,30 +31,31 @@ class Direction(Enum):
         }[self]
 
 
-ROOM_W, ROOM_H     = 960, 540        # normal room pixel size (matches screen)
-BOSS_W, BOSS_H     = 960, 540        # boss room is same screen size; we just
-                                      # mark it visually differently
+ROOM_W, ROOM_H = 960, 540     # normal room pixel size (matches screen)
+BOSS_W, BOSS_H = 960, 540        # boss room is same screen size; we just
+                                 # mark it visually differently
 
-DOOR_SIZE          = 64              # width/height of the door opening
+DOOR_SIZE = 64              # width/height of the door opening
 LOADING_ZONE_DEPTH = 20             # how deep the trigger rect is
-WALL_THICKNESS     = 16
+WALL_THICKNESS  = 16
 
 # Colors
-COL_FLOOR_NORMAL   = pygame.Color("#1a1a2e")
-COL_FLOOR_START    = pygame.Color("#16213e")
-COL_FLOOR_BOSS     = pygame.Color("#2e0a0a")
-COL_FLOOR_MINI     = pygame.Color("#0a2e1a")
-COL_WALL           = pygame.Color("#3a3a5c")
-COL_DOOR_OPEN      = pygame.Color("#c8a96e")
-COL_DOOR_FRAME     = pygame.Color("#7a5c2e")
-COL_LOADING_ZONE   = pygame.Color("#ffffff")   # debug so alpha low
-COL_LABEL          = pygame.Color("#ffffff")
+COL_FLOOR_NORMAL = pygame.Color("#1a1a2e")
+COL_FLOOR_START = pygame.Color("#16213e")
+COL_FLOOR_BOSS = pygame.Color("#2e0a0a")
+COL_FLOOR_MINI = pygame.Color("#0a2e1a")
+COL_FLOOR_WEAPON = pygame.Color("#0a2e1a")
+COL_WALL = pygame.Color("#3a3a5c")
+COL_DOOR_OPEN = pygame.Color("#c8a96e")
+COL_DOOR_FRAME = pygame.Color("#7a5c2e")
+COL_LOADING_ZONE = pygame.Color("#ffffff")   # debug so alpha low
+COL_LABEL = pygame.Color("#ffffff")
 
 
 @dataclass
 class Door:
     direction: Direction
-    target_room_id: int               # id of the room this door leads to
+    target_room_id: int   # id of the room this door leads to
     rect: pygame.Rect = field(init=False)
     loading_zone: pygame.Rect = field(init=False)
 
@@ -84,15 +87,16 @@ class Door:
 class Room:
     def __init__(
         self,
-        room_id:   int,
-        room_type: RoomType,
-        grid_pos:  tuple[int, int],
-        screen_w:  int = ROOM_W,
-        screen_h:  int = ROOM_H,
-        walls:     list[Wall]         = None,
-        hazards:   list[Hazard]       = None,
-        enemies:   list[Enemy]        = None,
-        pedestals: list[ItemPedestal] = None,
+        room_id: int,
+        room_type:RoomType,
+        grid_pos: tuple[int, int],
+        screen_w: int = ROOM_W,
+        screen_h: int = ROOM_H,
+        walls: list[Wall] = None,
+        hazards: list[Hazard] = None,
+        enemies: list[Enemy] = None,
+        pedestals:list[ItemPedestal] = None,
+
     ) -> None:
         self.id        = room_id
         self.type      = room_type
@@ -100,13 +104,25 @@ class Room:
         self.screen_w  = screen_w
         self.screen_h  = screen_h
 
-        self.walls     : list[Wall]         = walls     or []
-        self.hazards   : list[Hazard]       = hazards   or []
-        self.enemies   : list[Enemy]        = enemies   or []
+        self.walls : list[Wall]  = walls or []
+        self.hazards : list[Hazard] = hazards or []
+        self.enemies : list[Enemy] = enemies or []
         self.pedestals : list[ItemPedestal] = pedestals or []
 
         self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
+        self._border_walls: list[Wall] = []
+        self.cleared = not any(enemy.alive for enemy in self.enemies)
+        self.doors_locked = False
+
+        
+        # --- TEMP boss room goal ---
+        self.boss_goal_rect = pygame.Rect(
+            self.screen_w // 2 - 40,
+            self.screen_h // 2 - 40,
+            80,
+            80,
+        ) if self.type == RoomType.BOSS else None
 
  # --- Walls ---
     def build_border_walls(self) -> None:
@@ -167,7 +183,14 @@ class Room:
     @property
     def all_walls(self) -> list[Wall]:
         border = self._border_walls or []
-        return border + self.walls
+        if not self.doors_locked:
+            return border + self.walls
+
+        locked_walls = [
+            Wall(door.rect.x, door.rect.y, door.rect.width, door.rect.height)
+            for door in self.doors.values()
+        ]
+        return border + self.walls + locked_walls
     
     #  --- Doors ---
     def add_door(self, direction: Direction, target_room_id: int) -> None:
@@ -175,11 +198,40 @@ class Room:
         door.build_rects(self.screen_w, self.screen_h)
         self.doors[direction] = door
 
+    def has_live_enemies(self) -> bool:
+        return any(enemy.alive for enemy in self.enemies)
+
+    def lock_doors(self) -> None:
+        if self.doors_locked:
+            return
+        self.doors_locked = True
+        self._distribute_nav_grids()
+
+    def unlock_doors(self) -> None:
+        if not self.doors_locked:
+            return
+        self.doors_locked = False
+        self._distribute_nav_grids()
+
+    def on_player_enter(self) -> None:
+        if self.cleared or not self.has_live_enemies():
+            self.cleared = True
+            self.unlock_doors()
+            return
+        self.lock_doors()
+
+    def refresh_clear_state(self) -> None:
+        if not self.cleared and not self.has_live_enemies():
+            self.cleared = True
+            self.unlock_doors()
+
     def check_transition(self, player_rect: pygame.Rect) -> Optional[tuple[Direction, int]]:
        
         #Returns (direction, target_room_id) if the player's rect overlaps any
         #loading zone, otherwise None
-      
+        if self.doors_locked:
+            return None
+
         for direction, door in self.doors.items():
             if player_rect.colliderect(door.loading_zone):
                 return direction, door.target_room_id
@@ -196,12 +248,20 @@ class Room:
                 player.take_damage(hazard.damage)
 
         for pedestal in self.pedestals:
-            item = pedestal.update(dt, player)
-            if item is not None:
-                player.items.append(item)
-                for other in self.pedestals:
-                    if other is not pedestal:
-                        other.taken = True
+            reward = pedestal.update(dt, player)
+            if reward is not None:
+                claimed = False
+
+                if isinstance(reward, Weapon):
+                    claimed = player.acquire_weapon(reward)
+                else:
+                    player.items.append(reward)
+                    claimed = True
+
+                if claimed:
+                    for other in self.pedestals:
+                        if other is not pedestal:
+                            other.taken = True
 
 
     def _build_surface(self) -> pygame.Surface:
@@ -211,6 +271,7 @@ class Room:
             RoomType.START:     COL_FLOOR_START,
             RoomType.BOSS:      COL_FLOOR_BOSS,
             RoomType.MINI_GAME: COL_FLOOR_MINI,
+            RoomType.WEAPON_SHOP: COL_FLOOR_WEAPON
         }[self.type]
         surf.fill(floor_col)
 
@@ -225,10 +286,10 @@ class Room:
             pygame.draw.rect(surf, COL_WALL, r)
 
         for wall in self.walls:
-                    wall.draw(surf)
+            wall.draw(surf)
       
         for door in self.doors.values():
-            pygame.draw.rect(surf, floor_col,    door.rect)  # erase wall
+            pygame.draw.rect(surf, floor_col, door.rect)  # erase wall
             pygame.draw.rect(surf, COL_DOOR_FRAME, door.rect, 2)    # frame outline
 
         if pygame.font.get_init():
@@ -251,12 +312,36 @@ class Room:
         for pedestal in self.pedestals:
             pedestal.draw(surface, debug=debug)
 
+        door_fill = COL_WALL if self.doors_locked else {
+            RoomType.NORMAL: COL_FLOOR_NORMAL,
+            RoomType.START: COL_FLOOR_START,
+            RoomType.BOSS: COL_FLOOR_BOSS,
+            RoomType.MINI_GAME: COL_FLOOR_MINI,
+            RoomType.WEAPON_SHOP: COL_FLOOR_WEAPON
+        }[self.type]
+        for door in self.doors.values():
+            pygame.draw.rect(surface, door_fill, door.rect)
+            pygame.draw.rect(surface, COL_DOOR_FRAME, door.rect, 2)
+
         if debug:
             overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)
             for door in self.doors.values():
                 pygame.draw.rect(overlay, (*COL_LOADING_ZONE[:3], 40), door.loading_zone)
                 pygame.draw.rect(overlay, (*COL_LOADING_ZONE[:3], 120), door.loading_zone, 2)
             surface.blit(overlay, (0, 0))
+
+        if self.type == RoomType.BOSS and self.boss_goal_rect is not None:
+            pygame.draw.rect(surface, pygame.Color("#33cc66"), self.boss_goal_rect)
+            pygame.draw.rect(surface, pygame.Color("#ffffff"), self.boss_goal_rect, 2)
+
+            font_big = pygame.font.SysFont(None, 42)
+            font_sm = pygame.font.SysFont(None, 24)
+
+            title = font_big.render("Work in Progress", True, pygame.Color("#ffffff"))
+            subtitle = font_sm.render("Touch the goal to enter a new dungeon", True, pygame.Color("#dddddd"))
+
+            surface.blit(title, (self.screen_w // 2 - title.get_width() // 2, 90))
+            surface.blit(subtitle, (self.screen_w // 2 - subtitle.get_width() // 2, 130))
 
     def invalidate_surface(self) -> None:
         self._surface = None
@@ -268,3 +353,8 @@ class Room:
                 f"grid={self.grid_pos}, doors={doors}, "
                 f"walls={len(self.walls)}, hazards={len(self.hazards)}, "
                 f"enemies={len(self.enemies)})")
+    #temp 
+    def boss_goal_reached(self, player_rect: pygame.Rect) -> bool:
+        if self.type != RoomType.BOSS or self.boss_goal_rect is None:
+            return False
+        return player_rect.colliderect(self.boss_goal_rect)

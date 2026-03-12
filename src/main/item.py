@@ -252,7 +252,8 @@ ITEM_CATALOGUE: list[Item] = [
 PEDESTAL_W, PEDESTAL_H = 64, 80          # total pedestal visual size
 PEDESTAL_BASE_H        = 20              # height of the plinth portion
 ITEM_DISPLAY_Y_OFFSET  = -8             # how far above the plinth the item floats
-PICKUP_RADIUS          = 48             # how close the player must be to pick up
+PICKUP_RADIUS          = 48             # how close the player must be to buy
+ITEM_COST              = 10             # coins required to purchase an item
 
 COL_PEDESTAL_BASE      = pygame.Color("#4a3728")
 COL_PEDESTAL_TOP       = pygame.Color("#6b5240")
@@ -271,20 +272,21 @@ class ItemPedestal:
     # --- Update ---
 
     def update(self, dt: float, player) -> Item | None:
-        """
-        Call every frame.  Returns the item if the player picks it up,
-        otherwise returns None.
-        """
         if self.taken:
             return None
 
         self._bob_t += dt
 
         dist = self.pos.distance_to(pygame.Vector2(player.rect.center))
-        if dist <= PICKUP_RADIUS:
-            self.taken = True
-            return self.item
-        return None
+        if dist > PICKUP_RADIUS:
+            return None
+
+        if getattr(player, "coins", 0) < ITEM_COST:
+            return None
+
+        player.coins -= ITEM_COST
+        self.taken = True
+        return self.item
 
     # --- Draw ---
 
@@ -321,26 +323,45 @@ class ItemPedestal:
         item_y = cy - PEDESTAL_BASE_H - 10 - 32 + ITEM_DISPLAY_Y_OFFSET + bob
         surface.blit(glow_surf, (cx - 22, item_y - 6))
 
-        # Item sprite
         sprite = self.item.sprite
         sprite_rect = sprite.get_rect(centerx=cx, top=item_y)
         surface.blit(sprite, sprite_rect)
 
-        # Item name label
         name_surf = self._font.render(self.item.name, True, pygame.Color("#ffffff"))
         name_x    = cx - name_surf.get_width() // 2
-        name_y    = cy + 6
+        name_y    = cy + 2
 
         bg = pygame.Surface((name_surf.get_width() + 6, name_surf.get_height() + 4), pygame.SRCALPHA)
         bg.fill(COL_LABEL_BG)
         surface.blit(bg,       (name_x - 3, name_y - 2))
         surface.blit(name_surf,(name_x,     name_y))
 
+        # Price label
+        price_text = f"{ITEM_COST} COINS"
+        price_surf = self._font.render(price_text, True, pygame.Color("#ffd700"))
+        price_x    = cx - price_surf.get_width() // 2
+        price_y    = name_y + 18
+        price_bg = pygame.Surface((price_surf.get_width() + 6, price_surf.get_height() + 4), pygame.SRCALPHA)
+        price_bg.fill(COL_LABEL_BG)
+        surface.blit(price_bg,   (price_x - 3, price_y - 2))
+        surface.blit(price_surf, (price_x,     price_y))
+
         # Description on hover / debug
         if debug:
-            desc_surf = self._font.render(self.item.description, True, pygame.Color("#dddddd"))
-            surface.blit(desc_surf, (cx - desc_surf.get_width() // 2, name_y + 18))
+            if hasattr(self.item, "description"):
+                desc_text = self.item.description
+            else:
+                desc_text = self._weapon_summary(self.item)
+
+            desc_surf = self._font.render(desc_text, True, pygame.Color("#dddddd"))
+            surface.blit(desc_surf, (cx - desc_surf.get_width() // 2, price_y + 18))
 
         # Pickup indicator ring
         if debug:
             pygame.draw.circle(surface, pygame.Color("#ffffff"), (cx, cy), PICKUP_RADIUS, 1)
+
+
+    def _weapon_summary(self, weapon) -> str:
+        if getattr(weapon, "wtype", "") == "ranged":
+            return f"{weapon.damage} dmg  {weapon.fire_rate:.1f}/s"
+        return f"{weapon.damage} dmg  melee"

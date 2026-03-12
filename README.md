@@ -1,5 +1,5 @@
-# COMP323_GroupProject
-By Jacob Marison and Gabe Lazatin
+# Consumed With Greed
+By Jacob Marison 
 
 ## Controls - Rebindable in Title Screen
 - WASD: move
@@ -9,7 +9,14 @@ By Jacob Marison and Gabe Lazatin
 - `Esc`: quit
 
 ## Run
-# From this folder:
-    python3 -m pip install pygame
-    python3 main.py
+From this Folder:
+    python3 pip install -r requirements.txt
+    cd /src/
+    python main.py
+
+## Game Loop
+
+
+## Future Plans
+
  

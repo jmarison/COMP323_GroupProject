@@ -28,7 +28,7 @@ class TitleScreen:
 
         # Title
         title_font = pygame.font.SysFont(None, 64)
-        title_surf = title_font.render("super cool game title", True, pygame.Color("#e0e0e0"))
+        title_surf = title_font.render("Consumed with Greed", True, pygame.Color("#e0e0e0"))
         screen.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, self.h // 6))
 
         # Subtitle / hint
@@ -368,7 +368,59 @@ class PlayerHUD:
         
         self._draw_health(surface, player)
         self._draw_weapon(surface, player)
-    
+        self._draw_coins(surface, player)
+        self._draw_divine_protection(surface, player)
+
+    def _draw_divine_protection(self, surface: pygame.Surface, player) -> None:
+        x = self.screen_w - 185
+        y = self.screen_h - _HP_BAR_Y - _WPN_PANEL_H - 20
+
+        panel_w, panel_h = 168, _WPN_PANEL_H + _HP_BAR_H + 6
+        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel.fill((12, 12, 34, 200))
+        border = pygame.Color("#6f66ff") if player.divine_protection_active else pygame.Color("#444466")
+        pygame.draw.rect(panel, border, panel.get_rect(), 2, border_radius=4)
+        surface.blit(panel, (x, y))
+
+        title = self._font_sm.render("Divine Protection", True, pygame.Color("#c7c2ff"))
+        surface.blit(title, (x + 8, y + 6))
+
+        status = "READY" if player.divine_protection_active else "BROKEN"
+        status_col = pygame.Color("#8df0ff") if player.divine_protection_active else pygame.Color("#888888")
+        status_surf = self._font_md.render(status, True, status_col)
+        surface.blit(status_surf, (x + 8, y + 22))
+
+        reward = "100% COINS" if player.room_flawless else "33% COINS"
+        reward_col = pygame.Color("#ffd700") if player.room_flawless else pygame.Color("#999999")
+        reward_surf = self._font_sm.render(reward, True, reward_col)
+        surface.blit(reward_surf, (x + 8, y + panel_h - reward_surf.get_height() - 8))
+
+    # --- Coins --- 
+    def _draw_coins(self, surface: pygame.Surface, player) -> None:
+        coins = getattr(player, "coins", 0)
+        mult  = getattr(player, "damage_multiplier", 1.0)
+ 
+        x = _HP_BAR_X + _HP_BAR_W + 14
+        y = self.screen_h - _HP_BAR_Y - _WPN_PANEL_H - 20
+ 
+        panel_w, panel_h = 130, _WPN_PANEL_H + _HP_BAR_H + 6
+        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel.fill((10, 10, 30, 200))
+        pygame.draw.rect(panel, pygame.Color("#4a3a00"), panel.get_rect(), 2, border_radius=4)
+        surface.blit(panel, (x, y))
+ 
+        # coin icon (small gold circle)
+        pygame.draw.circle(surface, pygame.Color("#ffd700"), (x + 14, y + 14), 7)
+        pygame.draw.circle(surface, pygame.Color("#fffacd"), (x + 14, y + 14), 5)
+ 
+        coin_txt = self._font_md.render(str(coins), True, pygame.Color("#ffd700"))
+        surface.blit(coin_txt, (x + 26, y + 6))
+ 
+        # damage multiplier below
+        col = pygame.Color("#ff6644") if mult >= 5.0 else (pygame.Color("#ffcc00") if mult >= 2.0 else pygame.Color("#aaaaaa"))
+        mult_txt = self._font_sm.render(f"DMG  ×{mult:.1f}", True, col)
+        surface.blit(mult_txt, (x + 8, y + panel_h - mult_txt.get_height() - 8))
+
 
     # --- health ---
     def _draw_health(self, surface: pygame.Surface, player) -> None:

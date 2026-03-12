@@ -21,6 +21,7 @@ _DEFAULTS: dict[str, dict[str, int]] = {
         "weapon_prev":  pygame.K_q,
         "weapon_slot1": pygame.K_1,
         "weapon_slot2": pygame.K_2,
+        #"reload": pygame.K_r
     },
 }
 

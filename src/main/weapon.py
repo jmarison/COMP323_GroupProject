@@ -103,7 +103,7 @@ class Weapon:
                     self.reserve_clips -= 1
                 self.curr_ammo = self.clip_size
 
-    def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2) -> list[Bullet] | MeleeHitbox | None:
+    def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2, sound_manager=None) -> list[Bullet] | MeleeHitbox | None:
         if self._cooldown > 0:
             return None
         if self._reloading > 0:
@@ -117,10 +117,14 @@ class Weapon:
                 self.curr_ammo -= 1
             
             self._cooldown = 1.0 / self.fire_rate
+            if sound_manager is not None:
+                sound_manager.play_weapon(self.name)
             return self._spawn_bullets(origin, aim_dir)
         
         else: # melee
             self._cooldown = 1.0 / self.fire_rate
+            if sound_manager is not None:
+                sound_manager.play_weapon(self.name)
             return MeleeHitbox(origin = origin, direction = aim_dir, radius = self.melee_radius, half_angle = self.melee_half_angle, damage = self.damage, duration = self._cooldown * 0.6)
         
     def _spawn_bullets(self, origin: pygame.Vector2, aim_dir: pygame.Vector2) -> list[Bullet]:
