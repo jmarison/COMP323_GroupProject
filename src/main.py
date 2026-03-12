@@ -6,7 +6,7 @@ from main.game import Game
 def main() -> None:
     pygame.init()
     pygame.mixer.init()
-    pygame.display.set_caption("Temp Name")
+    pygame.display.set_caption("Consumed with Greed")
 
     game = Game()
     clock = pygame.time.Clock()

@@ -1,15 +1,22 @@
-# COMP323_GroupProject
-By Jacob Marison and Gabe Lazatin
+# Consumed With Greed
+By Jacob Marison 
 
 ## Controls - Rebindable in Title Screen
 - WASD: move
 - IJKL: aim
 - `F1`: toggle dungeon debug overlay 
-- `R`: generate new dungeon
+- `Y`: generate new dungeon
 - `Esc`: quit
 
 ## Run
-# From this folder:
-    python3 -m pip install pygame
-    python3 main.py
+From this Folder:
+    python3 pip install -r requirements.txt
+    cd /src/
+    python main.py
+
+## Game Loop
+
+
+## Future Plans
+
  

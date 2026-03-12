@@ -59,4 +59,17 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
     - Every 0.4 seconds each enemy recalculates a path to the player through the walkable cells, following waypoints until they get close enough to walk straight at the player</br>
     - Known bug: The heavy enemies (purple) can still get stuck on the opposite side of a wall when trying to reach the player likely due to their large size causing their start or goal cell to be marked as blocked
 
+
+## March 6, 2026 - Jacob Marison - Enemies-and-Weapons
+- <h3> Items </h3>
+    - 
+
+## March 9, 2026 - Jacob Marison - Enemies-and-Weapons
+- <h3> Weapons </h3>
+    - 
+
+## March 11, 2026 - Jacob Marison - Enemies-and-Weapons
+- <h3> Hitboxes and iframes </h3>
+    - 
+
     

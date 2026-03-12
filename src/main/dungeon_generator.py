@@ -1,27 +1,22 @@
 from __future__ import annotations
 import random
+import copy
+import pygame
 from collections import deque
 from typing import Optional
-import pygame
+
 from main.room import Room, RoomType, Direction
 from main.entities import Wall, Hazard, Enemy
-from main.room_layouts import NORMAL_ROOM_LAYOUTS, MINI_GAME_ROOM_LAYOUTS
-from main.item import ItemPedestal, ITEM_CATALOGUE
+from main.room_layouts import NORMAL_ROOM_LAYOUTS, MINI_GAME_ROOM_LAYOUTS, WEAPON_SHOP_LAYOUTS
 
-"""
- Every dungeon has exactly one START room, one BOSS room, one MINI_GAME room,
-  and a configurable number of NORMAL rooms.
- The BOSS room has exactly ONE door (entrance only).
- START and BOSS rooms are placed as far apart as possible on the grid.
- Only one room is ever active / displayed at a time.
- Rooms connect through doors which is loading zone triggered by player walking through.
- NORMAL rooms are assigned a random preset layout (walls, hazards, enemies).
-"""
+from main.item import ItemPedestal, ITEM_CATALOGUE
+from main.weapon import WEAPON_CATALOGUE
+
 
 # tunable values
 
-GRID_COLS        = 8
-GRID_ROWS        = 8
+GRID_COLS = 8
+GRID_ROWS = 8
 DEFAULT_NORMALS  = 8
 MAX_GEN_ATTEMPTS = 200
 
@@ -39,10 +34,17 @@ def _build_layout(
     pedestals: list[ItemPedestal] = []
     if room_type == RoomType.MINI_GAME:
         positions = layout.get("pedestals", [])
-        # Pick 3 distinct random items from the catalogue
-        chosen_items = rng.sample(ITEM_CATALOGUE, min(len(positions), len(ITEM_CATALOGUE)))
+        chosen_items = rng.sample(ITEM_CATALOGUE, min(3, len(ITEM_CATALOGUE)))
+
         for pos, item in zip(positions, chosen_items):
             pedestals.append(ItemPedestal(pos, item))
+
+    elif room_type == RoomType.WEAPON_SHOP:
+        positions = layout.get("pedestals", [])
+        chosen_weapons = rng.sample(WEAPON_CATALOGUE, min(3, len(WEAPON_CATALOGUE)))
+
+        for pos, weapon in zip(positions, chosen_weapons):
+            pedestals.append(ItemPedestal(pos, copy.copy(weapon)))
 
     return walls, hazards, enemies, pedestals
 
@@ -61,6 +63,7 @@ class Dungeon:
         self.rooms      = rooms
         self.current_id = start_id
         self.screen_w, self.screen_h = screen_size
+        self.current_room.on_player_enter()
 
     @property
     def current_room(self) -> Room:
@@ -72,7 +75,7 @@ class Dungeon:
         # Update enemies and hazards in the current room
         self.current_room.update(dt, player)
 
-        result = self.current_room.check_transition(player.rect)
+        result = self.current_room.check_transition(player.hitbox)
         if result is None:
             return False
 
@@ -80,6 +83,8 @@ class Dungeon:
         self.current_id = target_id
         player.pos = self._entry_position(direction.opposite())
         player.rect.center = (round(player.pos.x), round(player.pos.y))
+        player.hitbox.center = player.rect.center
+        self.current_room.on_player_enter()
         return True
 
     def _entry_position(self, entry_dir: Direction) -> pygame.Vector2:
@@ -107,14 +112,6 @@ class Dungeon:
 
 
 class DungeonGenerator:
-    """
-    seed : RNG seed (int or None for random)
-    num_normal_rooms : how many NORMAL rooms to include
-    screen_size : pixel dimensions of the screen / room
-    grid_cols : width of the logical grid
-    grid_rows : height of the logical grid
-    """
-
     def __init__(
         self,
         seed:             Optional[int]   = None,
@@ -143,8 +140,8 @@ class DungeonGenerator:
         )
 
     def _try_generate(self) -> Optional[Dungeon]:
-        total_special = 3   # START + BOSS + MINI_GAME
-        total_rooms   = total_special + self.num_normal_rooms
+        total_special = 4   # START + BOSS + MINI_GAME + WEAPON_SHOP
+        total_rooms = total_special + self.num_normal_rooms
         grid_capacity = self.grid_cols * self.grid_rows
 
         if total_rooms > grid_capacity:
@@ -223,10 +220,16 @@ class DungeonGenerator:
             return None
         mini_id = self.rng.choice(mini_candidates)
 
+        weapon_candidates = [rid for rid in remaining if rid != mini_id]
+        if not weapon_candidates:
+            return None
+        weapon_shop_id = self.rng.choice(weapon_candidates)
+
         type_map: dict[int, RoomType] = {
             start_id: RoomType.START,
             boss_id:  RoomType.BOSS,
             mini_id:  RoomType.MINI_GAME,
+            weapon_shop_id: RoomType.WEAPON_SHOP
         }
         for rid in all_ids:
             if rid not in type_map:
@@ -242,6 +245,9 @@ class DungeonGenerator:
             if rtype == RoomType.MINI_GAME and MINI_GAME_ROOM_LAYOUTS:
                 layout = self.rng.choice(MINI_GAME_ROOM_LAYOUTS)
                 walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
+            elif rtype == RoomType.WEAPON_SHOP and WEAPON_SHOP_LAYOUTS:
+                 layout = self.rng.choice(WEAPON_SHOP_LAYOUTS)
+                 walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
             elif rtype == RoomType.NORMAL and NORMAL_ROOM_LAYOUTS:
                 layout = self.rng.choice(NORMAL_ROOM_LAYOUTS)
                 walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
@@ -249,14 +255,14 @@ class DungeonGenerator:
                 walls, hazards, enemies, pedestals = [], [], [], []
 
             rooms[rid] = Room(
-                room_id   = rid,
+                room_id = rid,
                 room_type = rtype,
-                grid_pos  = pos_by_id[rid],
-                screen_w  = sw,
-                screen_h  = sh,
-                walls     = walls,
-                hazards   = hazards,
-                enemies   = enemies,
+                grid_pos = pos_by_id[rid],
+                screen_w = sw,
+                screen_h = sh,
+                walls = walls,
+                hazards = hazards,
+                enemies = enemies,
                 pedestals = pedestals,
             )
 

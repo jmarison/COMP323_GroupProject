@@ -2,6 +2,7 @@ from __future__ import annotations
 import pygame
 import heapq
 import math
+import random
 from typing import Optional
 
 
@@ -23,6 +24,48 @@ class Wall:
         return self.rect.colliderect(rect)
 
 
+# --- Coin ---
+
+COIN_RADIUS = 6
+COIN_COLLECT_R = 28  #pickup radius
+COL_COIN_OUTER = pygame.Color("#ffd700")
+COL_COIN_INNER = pygame.Color("#fffacd")
+COL_COIN_SHINE = pygame.Color("#ffffff")
+ 
+class Coin:
+    def __init__(self, x: float, y: float) -> None:
+        self.pos   = pygame.Vector2(x, y)
+        self.alive = True
+        self._bob_t: float = 0.0
+ 
+    def update(self, dt: float, player_rect: pygame.Rect, magnet_radius: float = 0.0, magnet_strength: float = 520.0) -> bool:
+        if not self.alive:
+            return False
+        self._bob_t += dt
+        player_pos = pygame.Vector2(player_rect.center)
+        to_player = player_pos - self.pos
+        dist = to_player.length()
+        if magnet_radius > 0 and 0 < dist <= magnet_radius:
+            self.pos += to_player.normalize() * magnet_strength * dt
+            dist = self.pos.distance_to(player_pos)
+        if dist <= COIN_COLLECT_R:
+            self.alive = False
+            return True
+        return False
+ 
+    def draw(self, surface: pygame.Surface) -> None:
+        if not self.alive:
+            return
+        bob = int(3 * pygame.math.Vector2(1, 0).rotate(self._bob_t * 150).y)
+        cx  = int(self.pos.x)
+        cy  = int(self.pos.y) + bob
+        pygame.draw.circle(surface, COL_COIN_OUTER, (cx, cy), COIN_RADIUS)
+        pygame.draw.circle(surface, COL_COIN_INNER, (cx, cy), COIN_RADIUS - 2)
+        # tiny shine
+        pygame.draw.circle(surface, COL_COIN_SHINE, (cx - 1, cy - 2), 1)
+
+
+
 # --- Hazard ---
 
 
@@ -39,12 +82,17 @@ class Hazard:
         HazardType.LAVA:  pygame.Color("#ff4500"),
     }
 
-    def __init__(self, x: int, y: int, w: int, h: int,
+    def __init__(self, 
+                 x: int, 
+                 y: int, 
+                 w: int, 
+                 h: int,
                  hazard_type: str = HazardType.SPIKE,
-                 damage: int = 10) -> None:
-        self.rect        = pygame.Rect(x, y, w, h)
+                 damage: int = 10
+                 ) -> None:
+        self.rect  = pygame.Rect(x, y, w, h)
         self.hazard_type = hazard_type
-        self.damage      = damage
+        self.damage= damage
 
     def draw(self, surface: pygame.Surface) -> None:
         color = self.COLORS.get(self.hazard_type, pygame.Color("#ff0000"))
@@ -108,8 +156,8 @@ def _astar(start_col:int, start_row:int, goal_col: int, goal_row: int, blocked: 
     g_cost: dict[tuple[int, int], float] = {(start_col, start_row): 0.0}
 
     DIRS = [
-        ( 0, -1, 1.0), ( 0,  1, 1.0), (-1,  0, 1.0), ( 1,  0, 1.0),
-        (-1, -1, 1.414), ( 1, -1, 1.414), (-1,  1, 1.414), ( 1,  1, 1.414),
+        (0, -1, 1.0), ( 0, 1, 1.0), (-1, 0, 1.0), ( 1, 0, 1.0),
+        (-1, -1, 1.414), ( 1, -1, 1.414), (-1, 1, 1.414), ( 1, 1, 1.414),
     ]
 
     while open_heap:
@@ -152,12 +200,12 @@ class EnemyType:
 
 
 _ENEMY_STATS = {
-    EnemyType.BASIC: {"hp": 40,  "speed": 135,  "damage": 10, "color": "#e74c3c", "size": (24, 24)},
-    EnemyType.FAST:  {"hp": 20,  "speed": 200, "damage": 5,  "color": "#e67e22", "size": (18, 18)},
-    EnemyType.HEAVY: {"hp": 120, "speed": 80,  "damage": 25, "color": "#8e44ad", "size": (36, 36)},
+    EnemyType.BASIC: {"hp": 65,  "speed": 75,  "damage": 15, "color": "#e74c3c", "size": (24, 24), "hitbox": (18, 18)},
+    EnemyType.FAST:  {"hp": 35,  "speed": 90, "damage": 10,  "color": "#e67e22", "size": (18, 18), "hitbox": (16, 16)},
+    EnemyType.HEAVY: {"hp": 120, "speed": 65,  "damage": 25, "color": "#8e44ad", "size": (36, 36), "hitbox": (26, 26)},
 }
-# this is how often the enemy recalcs its path
-_REPATH_INTERVAL = 0.4
+
+_REPATH_INTERVAL = 0.2 # how often enemy recalcs its path
 _DIRECT_CHASE_DIST = CELL_SIZE * 2
 
 class Enemy:
@@ -171,6 +219,9 @@ class Enemy:
         self.color = pygame.Color(stats["color"])
         w, h = stats["size"]
         self.rect = pygame.Rect(x - w // 2, y - h // 2, w, h)
+        hw, hh = stats["hitbox"] # hw is hitbox width / hh is hitbox height
+        self.hitbox = pygame.Rect(0, 0, hw, hh)
+        self.hitbox.center = self.rect.center
         self.pos = pygame.Vector2(x, y)
         self.alive = True
 
@@ -181,6 +232,8 @@ class Enemy:
 
         self._spawn_delay: float = 0.2  # when player enters room there is a delay before enemies start moving to give time to react
         self._hit_flash: float= 0.0
+        self._slow_mult: float = 1.0
+        self._slow_timer: float = 0.0
 
 
     def set_nav_grid(self, grid: list[list[bool]]) -> None:
@@ -197,15 +250,21 @@ class Enemy:
             return
         if self._hit_flash > 0:
             self._hit_flash -= dt
+        if self._slow_timer > 0:
+            self._slow_timer -= dt
+            if self._slow_timer <= 0:
+                self._slow_timer = 0.0
+                self._slow_mult = 1.0
 
         direction = self._get_move_direction(dt, player_pos)
         if direction.length_squared() > 0:
             direction = direction.normalize()
 
-        self.pos += direction * self.speed * dt
+        self.pos += direction * (self.speed * self._slow_mult) * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
+        self.hitbox.center = self.rect.center
 
-        # wall pushout 
+        # if player miraculously gets in the wall = pushout 
         if walls:
             self._resolve_wall_collisions(walls)
 
@@ -254,7 +313,7 @@ class Enemy:
                 self.rect.y -= min_y
             self.pos.x = self.rect.centerx
             self.pos.y = self.rect.centery
-
+        self.hitbox.center = self.rect.center
 
 
 
@@ -264,7 +323,16 @@ class Enemy:
         if self.hp <= 0:
             self.alive = False
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def apply_slow(self, multiplier: float, duration: float) -> None:
+        self._slow_mult = max(0.1, min(self._slow_mult, multiplier))
+        self._slow_timer = max(self._slow_timer, duration)
+        
+    def try_drop_coin(self, drop_chance: float = 0.33) -> "Coin | None":
+        if random.random() < max(0.0, min(1.0, drop_chance)):
+            return Coin(self.pos.x, self.pos.y)
+        return None
+
+    def draw(self, surface: pygame.Surface, debug: bool = False) -> None:
         if not self.alive:
             return
         pygame.draw.rect(surface, self.color, self.rect)
@@ -276,16 +344,18 @@ class Enemy:
         pygame.draw.rect(surface, pygame.Color("#333333"), (bar_x, bar_y, bar_w, bar_h))
         fill = int(bar_w * max(self.hp, 0) / _ENEMY_STATS[self.type]["hp"])
         pygame.draw.rect(surface, pygame.Color("#00cc44"), (bar_x, bar_y, fill, bar_h))
+        if debug:
+            pygame.draw.rect(surface, pygame.Color("#ff4400"), self.hitbox, 1)
 
 
 # --- Bullet ---
 _BULLET_COLORS  = {
     "default": pygame.Color("#ffe066"),
-    "fast":    pygame.Color("#88ddff"),
-    "heavy":   pygame.Color("#ff6644"),
+    "fast": pygame.Color("#88ddff"),
+    "heavy": pygame.Color("#ff6644"),
     "shotgun": pygame.Color("#ffaa44"),
-    "sniper":  pygame.Color("#44ffcc"),
-    "smg":     pygame.Color("#cc88ff"),
+    "sniper": pygame.Color("#44ffcc"),
+    "smg": pygame.Color("#cc88ff"),
 }
 class Bullet:
     def __init__(
@@ -334,7 +404,7 @@ class Bullet:
         eid = id(enemy)
         if eid in self._hit_ids:
             return False
-        if not enemy.rect.collidepoint(int(self.pos.x), int(self.pos.y)):
+        if not enemy.hitbox.collidepoint(int(self.pos.x), int(self.pos.y)):
             return False
         enemy.take_damage(self.damage)
         self._hit_ids.add(eid)
@@ -387,14 +457,13 @@ class MeleeHitbox:
         if eid in self._hit_ids:
             return False
 
-        to_enemy = pygame.Vector2(enemy.rect.center) - self.origin
+        to_enemy = pygame.Vector2(enemy.hitbox.center) - self.origin
         dist = to_enemy.length()
         if dist > self.radius: 
             return False
 
         angle = math.degrees(
-            math.acos(max(-1.0, min(1.0,
-                self.direction.dot(to_enemy) / dist))) if dist > 0 else 0.0
+            math.acos(max(-1.0, min(1.0, self.direction.dot(to_enemy) / dist))) if dist > 0 else 0.0
         )
         if angle > self.half_angle: 
             return False
@@ -416,3 +485,7 @@ class MeleeHitbox:
                         max(1, int(r * 0.45)),
         )
         surface.blit(arc_surf, (int(self.origin.x) - r - 1, int(self.origin.y) - r - 1))
+
+
+
+
