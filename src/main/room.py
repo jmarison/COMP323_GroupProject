@@ -267,9 +267,9 @@ class Room:
     def _build_surface(self) -> pygame.Surface:
         surf = pygame.Surface((self.screen_w, self.screen_h))
         floor_col = {
-            RoomType.NORMAL:    COL_FLOOR_NORMAL,
-            RoomType.START:     COL_FLOOR_START,
-            RoomType.BOSS:      COL_FLOOR_BOSS,
+            RoomType.NORMAL: COL_FLOOR_NORMAL,
+            RoomType.START: COL_FLOOR_START,
+            RoomType.BOSS: COL_FLOOR_BOSS,
             RoomType.MINI_GAME: COL_FLOOR_MINI,
             RoomType.WEAPON_SHOP: COL_FLOOR_WEAPON
         }[self.type]

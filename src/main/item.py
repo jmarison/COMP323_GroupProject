@@ -339,8 +339,8 @@ class ItemPedestal:
         # Price label
         price_text = f"{ITEM_COST} COINS"
         price_surf = self._font.render(price_text, True, pygame.Color("#ffd700"))
-        price_x    = cx - price_surf.get_width() // 2
-        price_y    = name_y + 18
+        price_x = cx - price_surf.get_width() // 2
+        price_y = name_y + 18
         price_bg = pygame.Surface((price_surf.get_width() + 6, price_surf.get_height() + 4), pygame.SRCALPHA)
         price_bg.fill(COL_LABEL_BG)
         surface.blit(price_bg,   (price_x - 3, price_y - 2))

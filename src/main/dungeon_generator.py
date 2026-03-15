@@ -228,8 +228,8 @@ class DungeonGenerator:
 
         type_map: dict[int, RoomType] = {
             start_id: RoomType.START,
-            boss_id:  RoomType.BOSS,
-            mini_id:  RoomType.MINI_GAME,
+            boss_id: RoomType.BOSS,
+            mini_id: RoomType.MINI_GAME,
             weapon_shop_id: RoomType.WEAPON_SHOP
         }
         for rid in all_ids:
