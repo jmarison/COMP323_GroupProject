@@ -30,8 +30,8 @@ def _build_layout(
     walls = [Wall(*w) for w in layout["walls"]]
     hazards = [Hazard(*h) for h in layout["hazards"]]
     enemies = [Enemy(*e)for e in layout["enemies"]]
-
     pedestals: list[ItemPedestal] = []
+    
     if room_type == RoomType.MINI_GAME:
         positions = layout.get("pedestals", [])
         chosen_items = rng.sample(ITEM_CATALOGUE, min(3, len(ITEM_CATALOGUE)))

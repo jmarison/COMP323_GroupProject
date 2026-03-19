@@ -7,6 +7,7 @@ from main.entities import Bullet, MeleeHitbox
 class WeaponType:
     MELEE  = "melee"
     RANGED = "ranged"
+    AURA = "aura"
 
 
 class Weapon:
@@ -30,6 +31,11 @@ class Weapon:
         # melee
         melee_radius:     float = 80.0,
         melee_half_angle: float = 55.0, 
+        #aura
+        aura_radius: float = 100.0,
+        aura_tick_rate: float = 2.0,
+        aura_color: pygame.Color = None,
+        aura_pulse_speed: float = 2.0
 
     ) -> None:
         self.name = name
@@ -53,11 +59,18 @@ class Weapon:
         self.melee_radius = melee_radius
         self.melee_half_angle = melee_half_angle
 
+        #aura
+        self.aura_radius = aura_radius
+        self.aura_tick_rate = aura_tick_rate
+        self.aura_color = aura_color if aura_color is not None else color
+        self.aura_pulse_speed = aura_pulse_speed
+
+        
         # runtime state
-        self.curr_ammo: int = clip_size      # -1 = unlimited
-        self._cooldown: float = 0.0            # seconds until next attack
-        self._reloading: float = 0.0            # reload timer
-        self.RELOAD_TIME: float = 1.2            # seconds
+        self.curr_ammo: int = clip_size  # -1 = unlimited
+        self._cooldown: float = 0.0 # seconds until next attack
+        self._reloading: float = 0.0  # reload timer
+        self.RELOAD_TIME: float = 1.2  # seconds
 
         self._sprite: pygame.Surface | None = None
 
@@ -104,6 +117,9 @@ class Weapon:
                 self.curr_ammo = self.clip_size
 
     def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2, sound_manager=None) -> list[Bullet] | MeleeHitbox | None:
+        if self.wtype == WeaponType.AURA:
+            return None   # aura weapons are always-on; they don't fire
+
         if self._cooldown > 0:
             return None
         if self._reloading > 0:
@@ -270,4 +286,29 @@ WEAPON_CATALOGUE: list[Weapon] = [
         clip_size = 2,
         reserve_clips = 6,
     ),
+
+     Weapon(
+        name = "Toxic Cloud",
+        wtype = WeaponType.AURA,
+        damage = 6,               
+        fire_rate = 0.5,            
+        color = pygame.Color("#44ff44"),
+        aura_radius = 90.0,            
+        aura_tick_rate = 4.0,           
+        aura_color = pygame.Color("#66ff44"),
+        aura_pulse_speed = 3.0,         
+    ),
+ 
+
+    Weapon(
+        name = "Soul Furnace",
+        wtype = WeaponType.AURA,
+        damage = 18,              
+        fire_rate = 0.5,
+        color = pygame.Color("#ff8833"),
+        aura_radius = 160.0,           
+        aura_tick_rate = 1.5,           
+        aura_color = pygame.Color("#ff5500"),
+        aura_pulse_speed = 1.2,
+    )
 ]

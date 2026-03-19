@@ -3,6 +3,22 @@ import pygame
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Callable, Optional
+from pathlib import Path
+
+_SPRITE_DIR = Path(__file__).parent / "assets" / "sprites"
+
+
+def _load_sprite(filename: str, size: tuple[int, int] = (32, 32)) -> pygame.Surface | None:
+    # if ive made a sprite it loads it, if not it just uses the placeholder square
+    
+    path = _SPRITE_DIR / filename
+    if not path.exists():
+        return None
+    try:
+        surf = pygame.image.load(str(path)).convert_alpha()
+        return pygame.transform.scale(surf, size)
+    except Exception:
+        return None
 
 
 
@@ -24,8 +40,8 @@ class EffectType(Enum):
     ENEMY_WEAKNESS  = auto()
     # Utility / special
     HEAL_ON_KILL    = auto()
-    SHIELD          = auto()
-    MAGNET          = auto()
+    SHIELD = auto()
+    MAGNET = auto()
 
 
 @dataclass
@@ -45,35 +61,42 @@ class Item:
 
     def __init__(
         self,
-        name:        str,
-        tier:        int,
+        name: str,
+        tier: int,
         description: str,
-        effects:     list[ItemEffect],
-        color:       pygame.Color | None = None,   # placeholder tint
-        sprite:      pygame.Surface | None = None,
+        effects: list[ItemEffect],
+        color: pygame.Color | None = None,   # placeholder tint
+        sprite: pygame.Surface | None = None,
     ) -> None:
         assert len(description.split()) <= 10, \
             f"Item '{name}' description exceeds 10 words: '{description}'"
 
-        self.name        = name
-        self.tier        = tier          # 1 = common … 3 = rare
+        self.name = name
+        self.tier = tier          # 1 = common … 3 = rare
         self.description = description
-        self.effects     = effects
-        self._sprite     = sprite
-        self._color      = color or pygame.Color("#aaaaaa")
+        self.effects = effects
+        self._sprite = sprite
+        self._color = color or pygame.Color("#aaaaaa")
 
     # --- Sprite ---
 
     @property
     def sprite(self) -> pygame.Surface:
-        """Return the sprite, generating a placeholder if none is set."""
         if self._sprite is None:
-            surf = pygame.Surface(self.PLACEHOLDER_SIZE, pygame.SRCALPHA)
-            surf.fill(self._color)
-            # draw a thin white border so items are distinguishable
-            pygame.draw.rect(surf, pygame.Color("#ffffff"),
-                             surf.get_rect(), 2)
-            self._sprite = surf
+            # Try loading a PNG from assets/sprites first.
+            # Filename convention: item name lowercased, spaces -> underscores.
+            # e.g. "Worn Boots" -> "worn_boots.png"
+            filename = self.name.lower().replace(" ", "_") + ".png"
+            loaded = _load_sprite(filename, self.PLACEHOLDER_SIZE)
+            if loaded is not None:
+                self._sprite = loaded
+            else:
+                # Fall back to the coloured placeholder square
+                surf = pygame.Surface(self.PLACEHOLDER_SIZE, pygame.SRCALPHA)
+                surf.fill(self._color)
+                pygame.draw.rect(surf, pygame.Color("#ffffff"),
+                                 surf.get_rect(), 2)
+                self._sprite = surf
         return self._sprite
 
     def set_sprite(self, surface: pygame.Surface) -> None:
@@ -111,23 +134,23 @@ ITEM_CATALOGUE: list[Item] = [
     Item(
         name        = "Rocket Shoes",
         tier        = 3,
-        description = "Greatly boosts movement speed.",
+        description = "Greatly increases your movement speed.",
         effects     = [ItemEffect(EffectType.MOVE_SPEED, 180)],
         color       = pygame.Color("#ff6600"),
     ),
     Item(
         name        = "Iron Heart",
         tier        = 2,
-        description = "Permanently increases your maximum health pool.",
+        description = "Increases your maximum health.",
         effects     = [ItemEffect(EffectType.MAX_HEALTH, 50)],
         color       = pygame.Color("#cc2222"),
     ),
     Item(
         name        = "Elixir of Giants",
         tier        = 3,
-        description = "Doubles your size and maximum health.",
+        description = "Increases your size and maximum health.",
         effects     = [
-            ItemEffect(EffectType.PLAYER_SIZE,  2.0, is_multiplier=True),
+            ItemEffect(EffectType.PLAYER_SIZE,  1.3, is_multiplier=True),
             ItemEffect(EffectType.MAX_HEALTH,  100),
         ],
         color       = pygame.Color("#44cc44"),
@@ -135,17 +158,16 @@ ITEM_CATALOGUE: list[Item] = [
     Item(
         name        = "Pocket Mirror",
         tier        = 2,
-        description = "Shrinks you, making you harder to hit.",
+        description = "Decreases your size",
         effects     = [ItemEffect(EffectType.PLAYER_SIZE, 0.65, is_multiplier=True)],
         color       = pygame.Color("#aaddff"),
     ),
 
     # ── Weapon / combat items 
-
-    Item(
+ Item(
         name        = "Hair Trigger",
         tier        = 1,
-        description = "Reduces delay between shots slightly.",
+        description = "Slightly increases fire rate",
         effects     = [ItemEffect(EffectType.FIRE_RATE, -0.05)],
         color       = pygame.Color("#ffdd44"),
     ),
@@ -159,7 +181,7 @@ ITEM_CATALOGUE: list[Item] = [
     Item(
         name        = "Lead Rounds",
         tier        = 1,
-        description = "Bullets deal more damage.",
+        description = "Bullets deal more damage",
         effects     = [ItemEffect(EffectType.BULLET_DAMAGE, 5)],
         color       = pygame.Color("#888888"),
     ),
@@ -242,6 +264,7 @@ ITEM_CATALOGUE: list[Item] = [
         effects     = [ItemEffect(EffectType.MAGNET, 200)],   # attract radius px
         color       = pygame.Color("#ff2222"),
     ),
+   
 ]
 
 
@@ -250,10 +273,10 @@ ITEM_CATALOGUE: list[Item] = [
 
 
 PEDESTAL_W, PEDESTAL_H = 64, 80          # total pedestal visual size
-PEDESTAL_BASE_H        = 20              # height of the plinth portion
-ITEM_DISPLAY_Y_OFFSET  = -8             # how far above the plinth the item floats
-PICKUP_RADIUS          = 48             # how close the player must be to buy
-ITEM_COST              = 10             # coins required to purchase an item
+PEDESTAL_BASE_H = 20              # height of the plinth portion
+ITEM_DISPLAY_Y_OFFSET = -8             # how far above the plinth the item floats
+PICKUP_RADIUS = 48             # how close the player must be to buy
+ITEM_COST = 10             # coins required to purchase an item
 
 COL_PEDESTAL_BASE      = pygame.Color("#4a3728")
 COL_PEDESTAL_TOP       = pygame.Color("#6b5240")
@@ -328,8 +351,8 @@ class ItemPedestal:
         surface.blit(sprite, sprite_rect)
 
         name_surf = self._font.render(self.item.name, True, pygame.Color("#ffffff"))
-        name_x    = cx - name_surf.get_width() // 2
-        name_y    = cy + 2
+        name_x = cx - name_surf.get_width() // 2
+        name_y = cy + 2
 
         bg = pygame.Surface((name_surf.get_width() + 6, name_surf.get_height() + 4), pygame.SRCALPHA)
         bg.fill(COL_LABEL_BG)

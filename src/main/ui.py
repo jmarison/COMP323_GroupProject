@@ -467,8 +467,12 @@ class PlayerHUD:
         surface.blit(name_surf, (x + _WPN_PAD, y + 6))
 
         # weapon type 
-        badge_text = "MELEE" if weapon.wtype == "melee" else "RANGED"
-        badge_col  = pygame.Color("#ff8888") if weapon.wtype == "melee" else pygame.Color("#88aaff")
+        if weapon.wtype == "melee":
+            badge_text, badge_col = "MELEE", pygame.Color("#ff8888")
+        elif weapon.wtype == "aura":
+            badge_text, badge_col = "AURA", pygame.Color("#8ac45b")
+        else:
+            badge_text, badge_col = "RANGED", pygame.Color("#88aaff")
         badge_surf = self._font_sm.render(badge_text, True, badge_col)
         surface.blit(badge_surf, (x + _WPN_PAD, y + 6 + name_surf.get_height() + 2))
 

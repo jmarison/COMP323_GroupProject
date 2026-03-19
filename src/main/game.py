@@ -61,7 +61,7 @@ class Game:
         self.Player._reset()
         #player starting weapons
         self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
-        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[0]))
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[10]))
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
@@ -169,6 +169,21 @@ class Game:
 
             self.Player.bullets = [b for b in self.Player.bullets if b.alive]
             self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
+
+            # Persistent aura damage (always-on while aura weapon is equipped)
+            aura = self.Player._active_aura
+            if aura is not None and aura.alive:
+                for enemy in enemies:
+                    if enemy.alive:
+                        hit = aura.try_hit(enemy)
+                        if hit:
+                            self.Player.on_enemy_hit(enemy)
+                        if hit and not enemy.alive:
+                            self.Player.on_enemy_killed()
+                            coin = enemy.try_drop_coin(flawless_drop_chance)
+                            if coin:
+                                self.room_coins.append(coin)
+
             self.dungeon.current_room.refresh_clear_state()
 
             magnet_radius = self.Player.coin_magnet_radius
@@ -189,6 +204,9 @@ class Game:
         self.room_coins = []
         self.Player.bullets.clear()
         self.Player.melee_hitboxes.clear()
+        self.Player.aura_hitboxes.clear()
+        # Reset the persistent aura so it re-initialises in the new room
+        self.Player._active_aura = None
         self.Player.start_room_protection()
 
 # ------------------------------ Draw ---------------------------------------- #
