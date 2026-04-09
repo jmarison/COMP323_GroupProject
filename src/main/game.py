@@ -5,7 +5,7 @@ import pygame
 import copy
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD
+from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
 from main.keybindings import KeyBindings
 from main.weapon import WEAPON_CATALOGUE
 from main.music_manager import MusicManager
@@ -48,6 +48,7 @@ class Game:
 
         self.title_screen = TitleScreen(self.w, self.h, self. font)
         self.settings_menu = SettingsMenu(self.w, self.h, self. font, self.bindings)
+        self.pause_menu = PauseMenu(self.w, self.h, self.music, self.sounds)
         self.item_hud = ItemHUD(self.w, self.h)
         self.player_hud = PlayerHUD(self.w, self.h)
 
@@ -253,12 +254,10 @@ class Game:
 
     def _draw_paused(self) -> None:
         self._draw_playing()   # still shows game underneath
-        overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 120))
-        self.screen.blit(overlay, (0, 0))
-        pause_font = pygame.font.SysFont(None, 72)
-        text = pause_font.render("PAUSED", True, pygame.Color("#ffffff"))
-        self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
+        action = self.pause_menu.draw(self.screen, self.events)
+        if action == "quit":
+            self.state = "title"
+            self.music.play("title")
 
     def _draw_gameover(self) -> None:
         self._draw_playing()

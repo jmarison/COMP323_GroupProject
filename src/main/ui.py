@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pygame
+import math
 
 
 
@@ -515,3 +516,179 @@ class PlayerHUD:
         rsv = self._font_sm.render(reserve_text, True, pygame.Color("#aaaaaa"))
         surface.blit(rsv, (panel_x + _WPN_PANEL_W - rsv.get_width() - _WPN_PAD,
                            panel_y + _WPN_PANEL_H - rsv.get_height() - 4))
+        
+
+
+class PauseMenu:
+    def __init__(self, screen_w: int, screen_h: int, music_manager, sound_manager) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self.music_manager = music_manager
+        self.sound_manager = sound_manager
+        
+        self._font_title = pygame.font.SysFont(None, 72)
+        self._font_label = pygame.font.SysFont(None, 28)
+        self._font_hint = pygame.font.SysFont(None, 20)
+
+        self.slider_width = 300
+        self.slider_height = 12
+        self.handle_radius = 10
+
+        center_x = screen_w // 2
+        start_y = screen_h // 2 - 60
+        spacing = 70
+
+        #different volume sliders
+        self.sliders = [
+            {
+                "label": "Master Volume",
+                "y": start_y,
+                "get": lambda: self._get_master_volume(),
+                "set": lambda v: self._set_master_volume(v),
+            },
+            {
+                "label": "Music Volume",
+                "y": start_y + spacing,
+                "get": lambda: self.music_manager.volume,
+                "set": lambda v: self.music_manager.set_volume(v),
+            },
+            {
+                "label": "SFX Volume",
+                "y": start_y + spacing * 2,
+                "get": lambda: self.sound_manager.volume,
+                "set": lambda v: self.sound_manager.set_volume(v),
+            },
+        ]
+
+        btn_w, btn_h = 200, 50
+        self.quit_button = pygame.Rect(
+            center_x - btn_w // 2,
+            start_y + spacing * 3 + 30,
+            btn_w,
+            btn_h
+        )
+
+        self.dragging_slider = None
+        self.quit_hovered = False
+
+        #some getters/setters
+
+    def _get_master_volume(self) -> float:
+        return (self.music_manager.volume + self.sound_manager.volume) / 2.0
+        
+    def _set_master_volume(self, value: float) -> None:
+        self.music_manager.set_volume(value)
+        self.sound_manager.set_volume(value)
+    
+    def _get_slider_rect(self, y: int) -> pygame.Rect:
+        return pygame.Rect(self.screen_w // 2 - self.slider_width // 2, y, self.slider_width, self.slider_height)
+    
+    #handlers
+    def _get_handle_pos(self, slider_rect: pygame.Rect, value: float) -> tuple[int, int]:
+        x = slider_rect.x + int(slider_rect.width * value)
+        y = slider_rect.centery
+        return (x, y)
+    
+    def _handle_mouse_event(self, event: pygame.event.Event) -> str | None:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = event.pos
+
+            # Check if clicking on quit button
+            if self.quit_button.collidepoint(mouse_pos):
+                return "quit"
+            
+            # Check if clicking on any slider handle
+            for i, slider in enumerate(self.sliders):
+                slider_rect = self._get_slider_rect(slider["y"])
+                value = slider["get"]()
+                handle_x, handle_y = self._get_handle_pos(slider_rect, value)
+
+                dist = math.hypot(mouse_pos[0] - handle_x, mouse_pos[1] - handle_y)
+                if dist <= self.handle_radius:
+                    self.dragging_slider = i
+                    return None
+                
+                # Check if clicking on slider bar (jump to position)
+                if slider_rect.collidepoint(mouse_pos):
+                    self.dragging_slider = i
+                    new_value = (mouse_pos[0] - slider_rect.x) / slider_rect.width
+                    new_value = max(0.0, min(1.0, new_value))
+                    slider["set"](new_value)
+                    return None
+        
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging_slider = None
+        
+        elif event.type == pygame.MOUSEMOTION:
+            mouse_pos = event.pos
+            
+            self.quit_hovered = self.quit_button.collidepoint(mouse_pos)
+            
+            if self.dragging_slider is not None:
+                slider = self.sliders[self.dragging_slider]
+                slider_rect = self._get_slider_rect(slider["y"])
+                
+                new_value = (mouse_pos[0] - slider_rect.x) / slider_rect.width
+                new_value = max(0.0, min(1.0, new_value))
+                slider["set"](new_value)
+        
+        return None
+
+    def draw(self, surface: pygame.Surface, events: list[pygame.event.Event]) -> str | None:
+        overlay = pygame.Surface((self.screen_w, self.screen_h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        surface.blit(overlay, (0, 0))
+        
+        title = self._font_title.render("PAUSED", True, pygame.Color("#ffffff"))
+        surface.blit(title, (self.screen_w // 2 - title.get_width() // 2, 80))
+        
+        action = None
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    return "resume"
+                elif event.key == pygame.K_ESCAPE:
+                    return "quit"
+            
+            mouse_action = self._handle_mouse_event(event)
+            if mouse_action:
+                action = mouse_action
+        
+        # Draw sliders
+        for slider in self.sliders:
+            y = slider["y"]
+            value = slider["get"]()
+            
+            label = self._font_label.render(slider["label"], True, pygame.Color("#e0e0e0"))
+            surface.blit(label, (self.screen_w // 2 - label.get_width() // 2, y - 30))
+            
+            slider_rect = self._get_slider_rect(y)
+            pygame.draw.rect(surface, pygame.Color("#333344"), slider_rect, border_radius=6)
+            
+            # Filled portion
+            filled_width = int(slider_rect.width * value)
+            if filled_width > 0:
+                filled_rect = pygame.Rect(slider_rect.x, slider_rect.y, filled_width, slider_rect.height)
+                pygame.draw.rect(surface, pygame.Color("#4fc3f7"), filled_rect, border_radius=6)
+            
+            handle_x, handle_y = self._get_handle_pos(slider_rect, value)
+            pygame.draw.circle(surface, pygame.Color("#ffffff"), (handle_x, handle_y), self.handle_radius)
+            pygame.draw.circle(surface, pygame.Color("#4fc3f7"), (handle_x, handle_y), self.handle_radius - 2)
+            
+            percent_text = f"{int(value * 100)}%"
+            percent_surf = self._font_label.render(percent_text, True, pygame.Color("#aaaaaa"))
+            surface.blit(percent_surf, (slider_rect.right + 20, y - percent_surf.get_height() // 2 + 6))
+        
+        #Quit button
+        btn_color = pygame.Color("#663333") if self.quit_hovered else pygame.Color("#442222")
+        pygame.draw.rect(surface, btn_color, self.quit_button, border_radius=8)
+        
+        border_color = pygame.Color("#ff4444") if self.quit_hovered else pygame.Color("#884444")
+        pygame.draw.rect(surface, border_color, self.quit_button, 2, border_radius=8)
+        
+        quit_text = self._font_label.render("Quit to Menu", True, pygame.Color("#ffffff"))
+        quit_text_rect = quit_text.get_rect(center=self.quit_button.center)
+        surface.blit(quit_text, quit_text_rect)
+        
+        return action
+    
