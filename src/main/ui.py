@@ -361,6 +361,17 @@ class PlayerHUD:
         self.screen_h = screen_h
         self._font_sm: pygame.font.Font | None = None
         self._font_md: pygame.font.Font | None = None
+
+        import os
+        BASE_DIR = os.path.dirname(__file__)  
+
+        self.coin_empty = pygame.image.load(os.path.join(BASE_DIR, "assets", "sprites", "coin_health.png")).convert_alpha()
+
+        self.coin_full = pygame.image.load(os.path.join(BASE_DIR, "assets", "sprites", "coin_health_active.png")).convert_alpha()
+
+        self.coin_size = 35
+        self.coin_empty = pygame.transform.smoothscale(self.coin_empty, (self.coin_size, self.coin_size))
+        self.coin_full  = pygame.transform.smoothscale(self.coin_full, (self.coin_size, self.coin_size))
     
     def draw(self, surface: pygame.Surface, player) -> None:
         if self._font_sm is None:
@@ -425,27 +436,29 @@ class PlayerHUD:
 
     # --- health ---
     def _draw_health(self, surface: pygame.Surface, player) -> None:
-        x, y = _HP_BAR_X, self.screen_h - _HP_BAR_Y - _HP_BAR_H - _WPN_PANEL_H - 6
-        bg = pygame.Surface((_HP_BAR_W, _HP_BAR_H), pygame.SRCALPHA)
-        bg.fill(COL_HP_BG)
-        surface.blit(bg, (x, y))
+        num_coins = 10
 
-        ratio = max(0.0, player.currHealth / player.maxHealth)
-        fill_w = int(_HP_BAR_W * ratio)
-        fill_col = COL_HP_FULL if ratio >= 0.99 else COL_HP_FILL
-        if fill_w > 0:
-            pygame.draw.rect(surface, fill_col, (x, y, fill_w, _HP_BAR_H))
+        # position (adjust to fit your UI)
+        start_x = _HP_BAR_X
+        y = self.screen_h - _HP_BAR_Y - _WPN_PANEL_H - self.coin_size - 6
+        spacing = self.coin_size - 20
 
-        pygame.draw.rect(surface, COL_HP_BORDER, (x, y, _HP_BAR_W, _HP_BAR_H), 2)
+        ratio = player.currHealth / player.maxHealth
+        filled_coins = int(ratio * num_coins)
+
+        for i in range(num_coins):
+            x = start_x + i * spacing
+
+            if i < filled_coins:
+                surface.blit(self.coin_full, (x, y))
+            else:
+                surface.blit(self.coin_empty, (x, y))
+
+        # optional text (you already had this)
         label = self._font_sm.render(
             f"{player.currHealth} / {player.maxHealth}", True, pygame.Color("#ffffff")
         )
-        lx = x + _HP_BAR_W // 2 - label.get_width() // 2
-        ly = y + _HP_BAR_H // 2 - label.get_height() // 2
-        surface.blit(label, (lx, ly))
-
-        tag = self._font_sm.render("HP", True, pygame.Color("#aaaaaa"))
-        surface.blit(tag, (x, y - tag.get_height() - 2))
+        surface.blit(label, (start_x, y - 18))
 
 
     def _draw_weapon(self, surface: pygame.Surface, player) -> None:
