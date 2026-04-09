@@ -486,6 +486,105 @@ class MeleeHitbox:
         )
         surface.blit(arc_surf, (int(self.origin.x) - r - 1, int(self.origin.y) - r - 1))
 
+# --- Aura hitbox ---
+class AuraHitbox:
+    def __init__(
+        self,
+        center: pygame.Vector2,
+        radius: float,
+        damage: int,
+        tick_rate: float,  # hits per second
+        color: pygame.Color,
+        pulse_speed: float = 2.0,   # how fast the ring pulses visually
+    ) -> None:
+        self.center = pygame.Vector2(center)
+        self.radius = radius
+        self.damage = damage
+        self.tick_interval: float = 1.0 / max(tick_rate, 0.01)
+        self.color = color
+        self.pulse_speed = pulse_speed
+        self.alive = True
+ 
+        # per enemy cooldown maps id(enemy) and seconds until next hit
+        self._enemy_timers: dict[int, float] = {}
+        # visual pulse
+        self._pulse_t: float = 0.0
+ 
+    # --- called every frame by the player update ---
+    def follow(self, new_center: pygame.Vector2) -> None:
+        self.center = pygame.Vector2(new_center)
+ 
+    def update(self, dt: float) -> None:
+        if not self.alive:
+            return
+        self._pulse_t += dt * self.pulse_speed
+ 
+        # tick down per enemy cooldowns
+        to_delete = []
+        for eid, timer in self._enemy_timers.items():
+            new_timer = timer - dt
+            if new_timer <= 0:
+                to_delete.append(eid)
+            else:
+                self._enemy_timers[eid] = new_timer
+        for eid in to_delete:
+            del self._enemy_timers[eid]
+ 
+    def try_hit(self, enemy: "Enemy") -> bool:
+        if not self.alive:
+            return False
+        eid = id(enemy)
+        if eid in self._enemy_timers:
+            return False
+ 
+        to_enemy = pygame.Vector2(enemy.hitbox.center) - self.center
+        if to_enemy.length() > self.radius:
+            return False
+ 
+        enemy.take_damage(self.damage)
+        self._enemy_timers[eid] = self.tick_interval
+        return True
+ 
+    def draw(self, surface: pygame.Surface) -> None:
+        if not self.alive:
+            return
+        r = int(self.radius)
+        cx, cy = int(self.center.x), int(self.center.y)
+ 
+        glow_size = r * 2 + 4
+        glow_surf = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+        base_alpha = 28
+        pygame.draw.circle(
+            glow_surf,
+            (*self.color[:3], base_alpha),
+            (r + 2, r + 2),
+            r,
+        )
+        surface.blit(glow_surf, (cx - r - 2, cy - r - 2))
+ 
+        # pulsing ring
+        pulse_offset = int(6 * math.sin(self._pulse_t * math.pi))
+        pulse_r = max(4, r + pulse_offset)
+        ring_alpha = int(120 + 80 * math.sin(self._pulse_t * math.pi))
+        ring_surf = pygame.Surface((pulse_r * 2 + 4, pulse_r * 2 + 4), pygame.SRCALPHA)
+        pygame.draw.circle(
+            ring_surf,
+            (*self.color[:3], ring_alpha),
+            (pulse_r + 2, pulse_r + 2),
+            pulse_r,
+            2,
+        )
+        surface.blit(ring_surf, (cx - pulse_r - 2, cy - pulse_r - 2))
+        inner_surf = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
+        pygame.draw.circle(
+            inner_surf,
+            (*self.color[:3], 180),
+            (r + 2, r + 2),
+            r,
+            1,
+        )
+        surface.blit(inner_surf, (cx - r - 2, cy - r - 2))
+
 
 
 

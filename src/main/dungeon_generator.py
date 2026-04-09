@@ -30,8 +30,8 @@ def _build_layout(
     walls = [Wall(*w) for w in layout["walls"]]
     hazards = [Hazard(*h) for h in layout["hazards"]]
     enemies = [Enemy(*e)for e in layout["enemies"]]
-
     pedestals: list[ItemPedestal] = []
+    
     if room_type == RoomType.MINI_GAME:
         positions = layout.get("pedestals", [])
         chosen_items = rng.sample(ITEM_CATALOGUE, min(3, len(ITEM_CATALOGUE)))
@@ -228,8 +228,8 @@ class DungeonGenerator:
 
         type_map: dict[int, RoomType] = {
             start_id: RoomType.START,
-            boss_id:  RoomType.BOSS,
-            mini_id:  RoomType.MINI_GAME,
+            boss_id: RoomType.BOSS,
+            mini_id: RoomType.MINI_GAME,
             weapon_shop_id: RoomType.WEAPON_SHOP
         }
         for rid in all_ids:

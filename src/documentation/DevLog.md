@@ -4,6 +4,7 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 
 ## Ongoing bugs:
  - 3/2/26 - When the spawn room connects to a normal room in such a way that the mini-game room and spawn room are next to each other. Only a door to the normal rooms appear so despite being next to each other, there is no door between the two. 
+ - 3/5/26 - Heavy enemies (purple) can still get stuck on the opposite side of a wall when trying to reach the player, likely due to their large size causing their start or goal cell to be marked as blocked in the nav grid.
 
 
 
@@ -62,14 +63,41 @@ This document contains the a record of logs that Jacob Marison and Gabe Lazatin
 
 ## March 6, 2026 - Jacob Marison - Enemies-and-Weapons
 - <h3> Items </h3>
-    - 
+    - Each mini game room will have 3 pedestals
+    - Each pedestal holds an item which the player can pick one of three (other two disappear)
+    - Items can alter a player's base stats like HP, speed, pickup range, etc; an enemy's stats like movespeed, size, HP, etc; and a player's weapon like fire rate, range, damage, etc
+    - Each item has an EffectType 
+    
 
 ## March 9, 2026 - Jacob Marison - Enemies-and-Weapons
 - <h3> Weapons </h3>
+    - 9 weapons, melee and ranged
+    - Melee swing in an arc and ranged launch a Bullet
+    - Ammo and reload system including hud element
     - 
 
 ## March 11, 2026 - Jacob Marison - Enemies-and-Weapons
 - <h3> Hitboxes and iframes </h3>
-    - 
+    - Enemy and Player hitboxes
+    - Player iframes
+    - Coins dropping from enemies
 
+## March 12, 2026 - Jacob Marison - Enemies-and-Weapons
+-  <h3> Divine Protection </h3>
+    - Divine Protection shield per room blocks 1 instance of damage
+    - While active, raises coin drop rate to 100%
+- <h3> Boss Room Teleporter </h3>
+    - Currently no boss implemented
+    - Boss room now has a teleporter which takes player to a new dungeon
+    - Player keeps items, coins, and weapons
+    - Player heals to full between floors 
+- <h3> Coin damage Multiplier </h3>
+    - Player damage scales with their money
+- <h3> Demo Walkthrough </h3>
+    - game-demo-walkthrouh-plan.pdf added to documentation
+    - Reliability checklist passed
+- <h3> HUD elements </h3>
+    - Divine protection indicator
+    - Player health, coin count, damage multiplier, current weapon name, ammo, weapon type
+    - ItemHUD shows collected item sprites in top corner
     

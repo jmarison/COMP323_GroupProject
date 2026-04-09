@@ -1,5 +1,5 @@
 import pygame
-from main.entities import Bullet, MeleeHitbox
+from main.entities import Bullet, MeleeHitbox, AuraHitbox
 from main.weapon import Weapon, WeaponType
 from main.item import Item, EffectType
 from main.keybindings import KeyBindings
@@ -77,9 +77,11 @@ class Player(pygame.sprite.Sprite):
         # --- items ---
         self.items: list[Item] = []
 
-        # --- projectiles that are currently alive from player ---
+        # --- hitboxes that are currently active from player ---
         self.bullets: list[Bullet] = []
         self.melee_hitboxes: list[MeleeHitbox] = []
+        self.aura_hitboxes: list[AuraHitbox] = []  # kept for compatibility
+        self._active_aura: AuraHitbox | None = None  # persistent always-on aura
 
         # --- sprite + position ---
         self.image = pygame.Surface(self.PLAYER_SIZE, pygame.SRCALPHA)
@@ -106,6 +108,7 @@ class Player(pygame.sprite.Sprite):
         self._handle_weapon_switch(events)
         self._handle_attack(dt, keys, events)
         self._update_weapon_cooldowns(dt)
+        self._update_aura(dt)
 
     # --- movement handler---
     def _handle_movement(self, dt:float, keys) -> None:
@@ -335,6 +338,8 @@ class Player(pygame.sprite.Sprite):
         weapon = self.current_weapon
         if weapon is None:
             return
+        if weapon.wtype == WeaponType.AURA:
+            return   # aura weapons are handled by _update_aura, not here
         if not self.controls.aim_held(keys):
             return
         result = weapon.try_attack(origin = pygame.Vector2(self.rect.center), aim_dir = self.aim_dir, sound_manager = self.sound_manager)
@@ -349,6 +354,38 @@ class Player(pygame.sprite.Sprite):
         elif isinstance(result, MeleeHitbox):
             result.damage = max(1, round(result.damage * mult))
             self.melee_hitboxes.append(result)
+
+    # --- Aura update (always-on, like Vampire Survivors garlic) ---
+    def _update_aura(self, dt: float) -> None:
+        weapon = self.current_weapon
+        is_aura = weapon is not None and weapon.wtype == WeaponType.AURA
+
+        if not is_aura:
+            # Switched away from aura weapon — kill it
+            if self._active_aura is not None:
+                self._active_aura.alive = False
+                self._active_aura = None
+            return
+
+        center = pygame.Vector2(self.rect.center)
+        radius = weapon.aura_radius * self._last_scale
+
+        if self._active_aura is None or not self._active_aura.alive:
+            # Create a fresh persistent aura
+            mult = self.damage_multiplier * self.enemy_weakness_multiplier
+            self._active_aura = AuraHitbox(
+                center     = center,
+                radius     = radius,
+                damage     = max(1, round(weapon.damage * mult)),
+                tick_rate  = weapon.aura_tick_rate,
+                color      = weapon.aura_color,
+                pulse_speed= weapon.aura_pulse_speed,
+            )
+        else:
+            # Keep it anchored to the player and update radius (in case size items change)
+            self._active_aura.follow(center)
+            self._active_aura.radius = radius
+            self._active_aura.update(dt)
 
     def _update_weapon_cooldowns(self, dt: float) -> None:
         for w in self.weaponInv:
@@ -415,6 +452,8 @@ class Player(pygame.sprite.Sprite):
         self.speed = self.base_speed
         self.bullets = []
         self.melee_hitboxes = []
+        self.aura_hitboxes = []
+        self._active_aura = None
         self._iframes = 0.0
         self.coins = 0
         self.divine_protection_active = False
@@ -432,6 +471,9 @@ class Player(pygame.sprite.Sprite):
             b.draw(surface)
         for mh in self.melee_hitboxes:
             mh.draw(surface)
+        if self._active_aura is not None and self._active_aura.alive:
+            self._active_aura.draw(surface)
+            
         if debug:
             pygame.draw.rect(surface, pygame.Color("#00ff00"), self.hitbox, 1)
 

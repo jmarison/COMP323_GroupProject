@@ -5,7 +5,7 @@ import pygame
 import copy
 from main.player import Player
 from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD
+from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
 from main.keybindings import KeyBindings
 from main.weapon import WEAPON_CATALOGUE
 from main.music_manager import MusicManager
@@ -48,6 +48,7 @@ class Game:
 
         self.title_screen = TitleScreen(self.w, self.h, self. font)
         self.settings_menu = SettingsMenu(self.w, self.h, self. font, self.bindings)
+        self.pause_menu = PauseMenu(self.w, self.h, self.music, self.sounds)
         self.item_hud = ItemHUD(self.w, self.h)
         self.player_hud = PlayerHUD(self.w, self.h)
 
@@ -61,7 +62,7 @@ class Game:
         self.Player._reset()
         #player starting weapons
         self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
-        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[0]))
+        self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[10]))
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
@@ -169,6 +170,21 @@ class Game:
 
             self.Player.bullets = [b for b in self.Player.bullets if b.alive]
             self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
+
+            # Persistent aura damage (always-on while aura weapon is equipped)
+            aura = self.Player._active_aura
+            if aura is not None and aura.alive:
+                for enemy in enemies:
+                    if enemy.alive:
+                        hit = aura.try_hit(enemy)
+                        if hit:
+                            self.Player.on_enemy_hit(enemy)
+                        if hit and not enemy.alive:
+                            self.Player.on_enemy_killed()
+                            coin = enemy.try_drop_coin(flawless_drop_chance)
+                            if coin:
+                                self.room_coins.append(coin)
+
             self.dungeon.current_room.refresh_clear_state()
 
             magnet_radius = self.Player.coin_magnet_radius
@@ -189,6 +205,9 @@ class Game:
         self.room_coins = []
         self.Player.bullets.clear()
         self.Player.melee_hitboxes.clear()
+        self.Player.aura_hitboxes.clear()
+        # Reset the persistent aura so it re-initialises in the new room
+        self.Player._active_aura = None
         self.Player.start_room_protection()
 
 # ------------------------------ Draw ---------------------------------------- #
@@ -235,12 +254,10 @@ class Game:
 
     def _draw_paused(self) -> None:
         self._draw_playing()   # still shows game underneath
-        overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 120))
-        self.screen.blit(overlay, (0, 0))
-        pause_font = pygame.font.SysFont(None, 72)
-        text = pause_font.render("PAUSED", True, pygame.Color("#ffffff"))
-        self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
+        action = self.pause_menu.draw(self.screen, self.events)
+        if action == "quit":
+            self.state = "title"
+            self.music.play("title")
 
     def _draw_gameover(self) -> None:
         self._draw_playing()

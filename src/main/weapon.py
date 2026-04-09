@@ -7,29 +7,35 @@ from main.entities import Bullet, MeleeHitbox
 class WeaponType:
     MELEE  = "melee"
     RANGED = "ranged"
+    AURA = "aura"
 
 
 class Weapon:
     def __init__(
         self,
-        name:          str,
-        wtype:         str,
-        damage:        int,
-        fire_rate:     float,
-        color:         pygame.Color,
+        name: str,
+        wtype: str,
+        damage: int,
+        fire_rate: float,
+        color: pygame.Color,
         # ranged
-        bullet_speed:  float = 500.0,
-        bullet_range:  float = 400.0,
-        bullet_scale:  float = 1.0,
-        bullet_color:  str   = "default",
-        clip_size:     int   = -1,
+        bullet_speed: float = 500.0,
+        bullet_range: float = 400.0,
+        bullet_scale: float = 1.0,
+        bullet_color: str   = "default",
+        clip_size: int   = -1,
         reserve_clips: int   = -1,
-        pierce:        int   = 0,
-        spread_shots:  int   = 1,
-        spread_angle:  float = 0.0,
+        pierce: int   = 0,
+        spread_shots: int   = 1,
+        spread_angle: float = 0.0,
         # melee
         melee_radius:     float = 80.0,
         melee_half_angle: float = 55.0, 
+        #aura
+        aura_radius: float = 100.0,
+        aura_tick_rate: float = 2.0,
+        aura_color: pygame.Color = None,
+        aura_pulse_speed: float = 2.0
 
     ) -> None:
         self.name = name
@@ -53,11 +59,18 @@ class Weapon:
         self.melee_radius = melee_radius
         self.melee_half_angle = melee_half_angle
 
+        #aura
+        self.aura_radius = aura_radius
+        self.aura_tick_rate = aura_tick_rate
+        self.aura_color = aura_color if aura_color is not None else color
+        self.aura_pulse_speed = aura_pulse_speed
+
+        
         # runtime state
-        self.curr_ammo: int = clip_size      # -1 = unlimited
-        self._cooldown: float = 0.0            # seconds until next attack
-        self._reloading: float = 0.0            # reload timer
-        self.RELOAD_TIME: float = 1.2            # seconds
+        self.curr_ammo: int = clip_size  # -1 = unlimited
+        self._cooldown: float = 0.0 # seconds until next attack
+        self._reloading: float = 0.0  # reload timer
+        self.RELOAD_TIME: float = 1.2  # seconds
 
         self._sprite: pygame.Surface | None = None
 
@@ -104,6 +117,9 @@ class Weapon:
                 self.curr_ammo = self.clip_size
 
     def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2, sound_manager=None) -> list[Bullet] | MeleeHitbox | None:
+        if self.wtype == WeaponType.AURA:
+            return None   # aura weapons are always going so they dont need to try
+
         if self._cooldown > 0:
             return None
         if self._reloading > 0:
@@ -121,7 +137,7 @@ class Weapon:
                 sound_manager.play_weapon(self.name)
             return self._spawn_bullets(origin, aim_dir)
         
-        else: # melee
+        else: 
             self._cooldown = 1.0 / self.fire_rate
             if sound_manager is not None:
                 sound_manager.play_weapon(self.name)
@@ -160,7 +176,7 @@ WEAPON_CATALOGUE: list[Weapon] = [
         name = "Dagger",
         wtype = WeaponType.MELEE,
         damage = 18,
-        fire_rate = 3.5,            # fast but short
+        fire_rate = 3.5,          
         color= pygame.Color("#aaddff"),
         melee_radius= 90,
         melee_half_angle = 35,
@@ -170,7 +186,7 @@ WEAPON_CATALOGUE: list[Weapon] = [
         name = "Broadsword",
         wtype = WeaponType.MELEE,
         damage = 40,
-        fire_rate = 1.7,  # slower, wide arc
+        fire_rate = 1.7,
         color = pygame.Color("#c0c0c0"),
         melee_radius= 120,
         melee_half_angle = 55,
@@ -180,7 +196,7 @@ WEAPON_CATALOGUE: list[Weapon] = [
         name = "War Hammer",
         wtype = WeaponType.MELEE,
         damage = 70,
-        fire_rate = 0.9,            # slow but hits hard
+        fire_rate = 0.9,            
         color = pygame.Color("#886644"),
         melee_radius = 145,
         melee_half_angle = 45,
@@ -192,7 +208,7 @@ WEAPON_CATALOGUE: list[Weapon] = [
         damage = 30,
         fire_rate = 2.2,
         color = pygame.Color("#44ff88"),
-        melee_radius = 110,            # long reach, thin arc
+        melee_radius = 110,            
         melee_half_angle = 28,
     ),
 
@@ -249,7 +265,7 @@ WEAPON_CATALOGUE: list[Weapon] = [
         fire_rate = 0.7,
         color = pygame.Color("#44ffcc"),
         bullet_speed = 950,
-        bullet_range = 960,              # crosses the full screen
+        bullet_range = 960,              
         bullet_scale = 1.2,
         bullet_color = "sniper",
         clip_size = 3,
@@ -270,4 +286,29 @@ WEAPON_CATALOGUE: list[Weapon] = [
         clip_size = 2,
         reserve_clips = 6,
     ),
+
+     Weapon(
+        name = "Toxic Cloud",
+        wtype = WeaponType.AURA,
+        damage = 6,               
+        fire_rate = 0.5,            
+        color = pygame.Color("#44ff44"),
+        aura_radius = 90.0,            
+        aura_tick_rate = 4.0,           
+        aura_color = pygame.Color("#66ff44"),
+        aura_pulse_speed = 3.0,         
+    ),
+ 
+
+    Weapon(
+        name = "Soul Furnace",
+        wtype = WeaponType.AURA,
+        damage = 18,              
+        fire_rate = 0.5,
+        color = pygame.Color("#ff8833"),
+        aura_radius = 160.0,           
+        aura_tick_rate = 1.5,           
+        aura_color = pygame.Color("#ff5500"),
+        aura_pulse_speed = 1.2,
+    )
 ]
