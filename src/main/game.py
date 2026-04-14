@@ -41,6 +41,7 @@ class Game:
         self.state: str = "title"   # title | settings | playing | gameover | paused
         self.seed = random.randrange(0, 2**32)
         self.rng = random.Random(self.seed)
+        self.current_floor = 1
 
         self.debug = False   # toggle with F1 to see loading zones
 
@@ -59,6 +60,7 @@ class Game:
 
     def _reset_run(self) -> None:
         self.seed = random.randrange(0, 2**32)
+        self.current_floor = 1
         self.Player._reset()
         #player starting weapons
         self.Player.add_weapon(copy.copy(WEAPON_CATALOGUE[4]))
@@ -69,6 +71,7 @@ class Game:
             seed             = self.seed,
             num_normal_rooms = 6,
             screen_size      = (self.w, self.h),
+            floor_number = self.current_floor
         )
         self.dungeon = gen.generate()
 
@@ -83,11 +86,13 @@ class Game:
 # --- next level --- (player keeps items/weapons/coins/etc)
     def _advance_to_next_dungeon(self) -> None:
         self.seed = random.randrange(0, 2**32)
+        self.current_floor += 1
 
         gen = DungeonGenerator(
             seed=self.seed,
             num_normal_rooms=6,
             screen_size=(self.w, self.h),
+            floor_number=self.current_floor
         )
         self.dungeon = gen.generate()
         self.room_coins = []

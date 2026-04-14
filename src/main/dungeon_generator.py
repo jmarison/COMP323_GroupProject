@@ -25,26 +25,33 @@ def _build_layout(
     layout: dict,
     rng: random.Random,
     room_type: RoomType,
+    floor_number: int 
 ) -> tuple[list[Wall], list[Hazard], list[Enemy], list[ItemPedestal]]:
 
     walls = [Wall(*w) for w in layout["walls"]]
     hazards = [Hazard(*h) for h in layout["hazards"]]
-    enemies = [Enemy(*e)for e in layout["enemies"]]
+    enemies = [Enemy(*e, level=floor_number) for e in layout["enemies"]]
     pedestals: list[ItemPedestal] = []
+
+    price_multiplier = 1 + (floor_number - 1) * 0.5
     
     if room_type == RoomType.MINI_GAME:
         positions = layout.get("pedestals", [])
         chosen_items = rng.sample(ITEM_CATALOGUE, min(3, len(ITEM_CATALOGUE)))
 
         for pos, item in zip(positions, chosen_items):
-            pedestals.append(ItemPedestal(pos, item))
+            p = ItemPedestal(pos, item)
+            p.price = int(p.price * price_multiplier) 
+            pedestals.append(p)
 
     elif room_type == RoomType.WEAPON_SHOP:
         positions = layout.get("pedestals", [])
         chosen_weapons = rng.sample(WEAPON_CATALOGUE, min(3, len(WEAPON_CATALOGUE)))
 
         for pos, weapon in zip(positions, chosen_weapons):
-            pedestals.append(ItemPedestal(pos, copy.copy(weapon)))
+            p = ItemPedestal(pos, copy.copy(weapon))
+            p.price = int(p.price * price_multiplier) # Scale price
+            pedestals.append(p)
 
     return walls, hazards, enemies, pedestals
 
@@ -119,6 +126,7 @@ class DungeonGenerator:
         screen_size: tuple[int, int] = (960, 540),
         grid_cols: int = GRID_COLS,
         grid_rows: int = GRID_ROWS,
+        floor_number: int = 1,
     ) -> None:
         self.seed = seed if seed is not None else random.randrange(0, 2**32)
         self.rng = random.Random(self.seed)
@@ -126,6 +134,7 @@ class DungeonGenerator:
         self.screen_size = screen_size
         self.grid_cols = grid_cols
         self.grid_rows = grid_rows
+        self.floor_number = floor_number
 
     def generate(self) -> Dungeon:
         for attempt in range(MAX_GEN_ATTEMPTS):
@@ -245,13 +254,13 @@ class DungeonGenerator:
             # Pick a random preset layout
             if rtype == RoomType.MINI_GAME and MINI_GAME_ROOM_LAYOUTS:
                 layout = self.rng.choice(MINI_GAME_ROOM_LAYOUTS)
-                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
+                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype, self.floor_number)
             elif rtype == RoomType.WEAPON_SHOP and WEAPON_SHOP_LAYOUTS:
                  layout = self.rng.choice(WEAPON_SHOP_LAYOUTS)
-                 walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
+                 walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype, self.floor_number)
             elif rtype == RoomType.NORMAL and NORMAL_ROOM_LAYOUTS:
                 layout = self.rng.choice(NORMAL_ROOM_LAYOUTS)
-                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype)
+                walls, hazards, enemies, pedestals = _build_layout(layout, self.rng, rtype, self.floor_number)
             else:
                 walls, hazards, enemies, pedestals = [], [], [], []
 
