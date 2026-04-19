@@ -41,8 +41,8 @@ class ControlScheme:
 
 class Player(pygame.sprite.Sprite):
     MAX_WEAPONS = 2
-    PLAYER_SIZE = (32, 48)
-    HITBOX_SIZE = (22, 34)
+    PLAYER_SIZE = (110, 110)
+    HITBOX_SIZE = (24, 36)
     COLOR = pygame.Color("#4fc3f7")
     IFRAME_DURATION = 1.2
 
@@ -52,8 +52,8 @@ class Player(pygame.sprite.Sprite):
         # --- player stats ---
         self.base_max_health: int = 50
         self.maxHealth: int = self.base_max_health
-        self.currHealth: int  = self.maxHealth
-        self.base_speed : int = 275
+        self.currHealth: int = self.maxHealth
+        self.base_speed : int = 265
         self.speed : int = self.base_speed
 
         self.controls = ControlScheme(bindings)
@@ -85,12 +85,26 @@ class Player(pygame.sprite.Sprite):
 
         # --- sprite + position ---
         self.image = pygame.Surface(self.PLAYER_SIZE, pygame.SRCALPHA)
-        self.image.fill(self.COLOR)
         self.rect = self.image.get_rect(center=pos)
         self.hitbox = pygame.Rect(0, 0, *self.HITBOX_SIZE)
         self.hitbox.center = self.rect.center
         self.pos = pygame.Vector2(pos)
         self.aim_dir = pygame.Vector2(1,0)
+
+        # --- load animations ---
+        anim_map = {
+            "idle_down":  (0, 2),
+            "idle_right": (1, 2),
+            "idle_up":    (2, 2),
+            "walk_down":  (3, 4),
+            "walk_right": (4, 4),
+            "walk_up":    (5, 4),
+            "hit":        (6, 2),
+            "death":      (10, 3)
+        }
+        self.animator = Animator("main/assets/sprites/prototype_character.png", (32, 32), anim_map)
+        self.image = self.animator.get_frame(0) # Initial 
+        self.facing_dir = "down"
 
     # --- core update loop ----
 
@@ -116,29 +130,59 @@ class Player(pygame.sprite.Sprite):
         self.pos += direction * self.speed * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
         self.hitbox.center = self.rect.center
+
+        # handle direction to determine which animation
+        if self.is_dead:
+            self.animator.set_anim("death")
+        elif self._iframes > 0 and self.currHealth > 0:
+            self.animator.set_anim("hit")
+        elif direction.length_squared() > 0:
+            # MOVING: Update the facing_dir and play walk animation
+            if abs(direction.x) > abs(direction.y):
+                self.facing_dir = "left" if direction.x < 0 else "right"
+                self.animator.set_anim("walk_right", flip_x=(direction.x < 0))
+            elif direction.y > 0:
+                self.facing_dir = "down"
+                self.animator.set_anim("walk_down")
+            else:
+                self.facing_dir = "up"
+                self.animator.set_anim("walk_up")
+        else:
+            # IDLE: Use the last direction walked
+            if self.facing_dir == "left":
+                self.animator.set_anim("idle_right", flip_x=True)
+            elif self.facing_dir == "right":
+                self.animator.set_anim("idle_right", flip_x=False)
+            elif self.facing_dir == "up":
+                self.animator.set_anim("idle_up")
+            else: # Default/Down
+                self.animator.set_anim("idle_down")
+
+        # Update current frame
+        self.image = self.animator.get_frame(dt)
+
     # --- Collision --- 
     def wall_collisions(self, walls: list) -> None:
         for wall in walls:
-            if not self.rect.colliderect(wall.rect):
+            if not self.hitbox.colliderect(wall.rect):
                 continue
 
-            dx_left = self.rect.right  - wall.rect.left   
-            dx_right = wall.rect.right  - self.rect.left   
-            dy_up = self.rect.bottom - wall.rect.top    
-            dy_down = wall.rect.bottom - self.rect.top     
+            dx_left = self.hitbox.right - wall.rect.left
+            dx_right = wall.rect.right - self.hitbox.left
+            dy_up = self.hitbox.bottom - wall.rect.top
+            dy_down = wall.rect.bottom - self.hitbox.top
 
             min_x = dx_left if dx_left < dx_right else -dx_right
             min_y = dy_up if dy_up < dy_down else -dy_down
 
             if abs(min_x) < abs(min_y):
-                self.rect.x -= min_x
+                self.hitbox.x -= min_x
             else:
-                self.rect.y -= min_y
+                self.hitbox.y -= min_y
 
-            # Keep pos in sync with rect
-            self.pos.x = self.rect.centerx
-            self.pos.y = self.rect.centery
-        self.hitbox.center = self.rect.center
+            self.pos.x = self.hitbox.centerx
+            self.pos.y = self.hitbox.centery
+            self.rect.center = self.hitbox.center
 
     # -- aiming handler---
     def _handle_aim(self, keys) -> None:
@@ -231,6 +275,10 @@ class Player(pygame.sprite.Sprite):
         center = self.rect.center
         w = max(16, round(self.PLAYER_SIZE[0] * scale))
         h = max(20, round(self.PLAYER_SIZE[1] * scale))
+
+        self.rect.size = (w, h)
+        self._last_scale = scale
+
         self.image = pygame.Surface((w, h), pygame.SRCALPHA)
         self.image.fill(self.COLOR)
         self.rect = self.image.get_rect(center=center)
@@ -238,7 +286,6 @@ class Player(pygame.sprite.Sprite):
         hb_h = max(16, round(self.HITBOX_SIZE[1] * scale))
         self.hitbox = pygame.Rect(0, 0, hb_w, hb_h)
         self.hitbox.center = center
-        self._last_scale = scale
 
     def _apply_item_modifiers_to_weapons(self) -> None:
         fire_rate_add = self._sum_effect(EffectType.FIRE_RATE)
@@ -465,8 +512,9 @@ class Player(pygame.sprite.Sprite):
     # --- Drawing --- 
     def draw(self, surface: pygame.Surface, debug: bool = False) -> None:
         if self._iframes <= 0 or int(self._iframes * 30) % 2 == 0:
-            surface.blit(self.image, self.rect)
-        self._draw_aim_line(surface)
+            scaled_img = pygame.transform.scale(self.image, self.rect.size)
+            surface.blit(scaled_img, self.rect)
+        #self._draw_aim_line(surface)
         for b in self.bullets:
             b.draw(surface)
         for mh in self.melee_hitboxes:
@@ -481,3 +529,39 @@ class Player(pygame.sprite.Sprite):
         start = pygame.Vector2(self.rect.center)
         end = start + self.aim_dir * 28
         pygame.draw.line(surface, pygame.Color("#ffffff"), start, end, 2)
+
+
+
+# ========= ANIMATION STUFF ===============
+class Animator:
+    def __init__(self, sheet_path, frame_size, animations):
+        self.sheet = pygame.image.load(sheet_path).convert_alpha()
+        self.frame_size = frame_size
+        self.animations = animations  
+        self.current_anim = "idle_down"
+        self.frame_index = 0
+        self.timer = 0
+        self.fps = 4
+        self.flip_x = False
+
+    def get_frame(self, dt):
+        row, num_frames = self.animations.get(self.current_anim, (0, 1))
+        self.timer += dt
+        if self.timer >= 1 / self.fps:
+            self.timer = 0
+            self.frame_index = (self.frame_index + 1) % num_frames
+        
+        rect = pygame.Rect(self.frame_index * self.frame_size[0], 
+                           row * self.frame_size[1], 
+                           *self.frame_size)
+        
+        frame = self.sheet.subsurface(rect)
+        if self.flip_x:
+            return pygame.transform.flip(frame, True, False)
+        return frame
+    
+    def set_anim(self, name, flip_x = False):
+        if self.current_anim != name or self.flip_x != flip_x:
+            self.current_anim = name
+            self.flip_x = flip_x
+            self.frame_index = 0
