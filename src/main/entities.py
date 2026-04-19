@@ -210,12 +210,14 @@ _DIRECT_CHASE_DIST = CELL_SIZE * 2
 
 class Enemy:
 
-    def __init__(self, x: int, y: int, enemy_type: str = EnemyType.BASIC) -> None:
-        stats  = _ENEMY_STATS[enemy_type]
+    def __init__(self, x: int, y: int, enemy_type: str = EnemyType.BASIC, level: int = 1) -> None:
+        stats = _ENEMY_STATS[enemy_type]
         self.type = enemy_type
-        self.hp = stats["hp"]
+
+        # HP and damage scale with floor level
+        self.hp = int(stats["hp"] * (1 + (level - 1) * 0.20))
         self.speed = stats["speed"]
-        self.damage = stats["damage"]
+        self.damage = int(stats["damage"] * (1 + (level - 1) * 0.10))
         self.color = pygame.Color(stats["color"])
         w, h = stats["size"]
         self.rect = pygame.Rect(x - w // 2, y - h // 2, w, h)

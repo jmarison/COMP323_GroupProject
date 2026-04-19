@@ -276,7 +276,7 @@ PEDESTAL_W, PEDESTAL_H = 64, 80          # total pedestal visual size
 PEDESTAL_BASE_H = 20              # height of the plinth portion
 ITEM_DISPLAY_Y_OFFSET = -8             # how far above the plinth the item floats
 PICKUP_RADIUS = 48             # how close the player must be to buy
-ITEM_COST = 10             # coins required to purchase an item
+
 
 COL_PEDESTAL_BASE      = pygame.Color("#4a3728")
 COL_PEDESTAL_TOP       = pygame.Color("#6b5240")
@@ -286,11 +286,12 @@ COL_LABEL_BG           = pygame.Color(0, 0, 0, 160)
 
 class ItemPedestal:
     def __init__(self, pos: tuple[int, int], item: Item) -> None:
-        self.pos    = pygame.Vector2(pos)          # centre of the base
+        self.pos    = pygame.Vector2(pos)   
         self.item   = item
         self.taken  = False
-        self._font  = None                          # lazy-initialised
-        self._bob_t = 0.0                           # time accumulator for bobbing
+        self._font  = None                  
+        self._bob_t = 0.0   
+        self.price = 10                
 
     # --- Update ---
 
@@ -304,10 +305,10 @@ class ItemPedestal:
         if dist > PICKUP_RADIUS:
             return None
 
-        if getattr(player, "coins", 0) < ITEM_COST:
+        if getattr(player, "coins", 0) < self.price:
             return None
 
-        player.coins -= ITEM_COST
+        player.coins -= self.price
         self.taken = True
         return self.item
 
@@ -360,7 +361,7 @@ class ItemPedestal:
         surface.blit(name_surf,(name_x,     name_y))
 
         # Price label
-        price_text = f"{ITEM_COST} COINS"
+        price_text = f"{self.price} COINS"
         price_surf = self._font.render(price_text, True, pygame.Color("#ffd700"))
         price_x = cx - price_surf.get_width() // 2
         price_y = name_y + 18
