@@ -2,6 +2,8 @@ from __future__ import annotations
 import pygame
 import math
 
+from config import FONT_PATH
+
 
 
 # ------------------ TITLE ---------------------------
@@ -28,7 +30,7 @@ class TitleScreen:
         screen.fill(pygame.Color("#1a1a2e"))
 
         # Title
-        title_font = pygame.font.SysFont(None, 64)
+        title_font = pygame.font.Font(FONT_PATH, 64)
         title_surf = title_font.render("Consumed with Greed", True, pygame.Color("#e0e0e0"))
         screen.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, self.h // 6))
 
@@ -276,11 +278,11 @@ class ItemHUD:
     def __init__(self, screen_w: int, screen_h: int) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
-        self._font = None         
+        self._font = pygame.font.Font(FONT_PATH, 22)         
 
     def draw(self, surface: pygame.Surface, items: list) -> None:
         if self._font is None:
-            self._font = pygame.font.SysFont(None, 16)
+            self.font = pygame.font.Font(FONT_PATH, 22)
 
         num_items= len(items)
         num_cols = _HUD_COLS

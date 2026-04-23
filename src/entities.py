@@ -4,6 +4,7 @@ import heapq
 import math
 import random
 from typing import Optional, List
+from config import FONT_PATH
 
 
 

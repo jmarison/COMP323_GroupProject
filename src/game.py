@@ -13,6 +13,7 @@ from src.sound_manager import SoundManager
 from src.entities import Coin, Boss
 from src.ui import RoomTransition
 from src.room import RoomType
+from config import FONT_PATH
 
 
 
@@ -32,7 +33,7 @@ class Game:
         self.w = 960
         self.h = 540
         self.screen = pygame.display.set_mode((self.w, self.h))
-        self.font = pygame.font.SysFont(None, 24)
+        self.font = pygame.font.Font(FONT_PATH, 24)
 
         self.music = MusicManager(volume=0.1)
         self.music.play("title")
@@ -343,10 +344,10 @@ class Game:
         overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
         self.screen.blit(overlay, (0, 0))
-        go_font = pygame.font.SysFont(None, 72)
+        go_font = pygame.font.Font(FONT_PATH, 72)
         text = go_font.render("GAME OVER", True, pygame.Color("#ff4444"))
         self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
-        hint_font = pygame.font.SysFont(None, 28)
+        hint_font = pygame.font.Font(FONT_PATH, 28)
         hint = hint_font.render("SPACE / Y  —  New Run", True, pygame.Color("#aaaaaa"))
         self.screen.blit(hint, (self.w // 2 - hint.get_width() // 2, self.h // 2 + 50))
 
