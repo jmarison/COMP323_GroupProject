@@ -96,10 +96,11 @@ class Room:
         hazards: list[Hazard] = None,
         enemies: list[Enemy] = None,
         pedestals:list[ItemPedestal] = None,
+        boss=None
 
     ) -> None:
-        self.id        = room_id
-        self.type      = room_type
+        self.id = room_id
+        self.type = room_type
         self.grid_pos  = grid_pos
         self.screen_w  = screen_w
         self.screen_h  = screen_h
@@ -108,6 +109,7 @@ class Room:
         self.hazards : list[Hazard] = hazards or []
         self.enemies : list[Enemy] = enemies or []
         self.pedestals : list[ItemPedestal] = pedestals or []
+        self.boss = boss
 
         self.doors: dict[Direction, Door] = {}
         self._surface: Optional[pygame.Surface] = None
@@ -331,17 +333,11 @@ class Room:
             surface.blit(overlay, (0, 0))
 
         if self.type == RoomType.BOSS and self.boss_goal_rect is not None:
-            pygame.draw.rect(surface, pygame.Color("#33cc66"), self.boss_goal_rect)
-            pygame.draw.rect(surface, pygame.Color("#ffffff"), self.boss_goal_rect, 2)
+            if not self.boss.alive:
+                pygame.draw.rect(surface, pygame.Color("#33cc66"), self.boss_goal_rect)
+                pygame.draw.rect(surface, pygame.Color("#ffffff"), self.boss_goal_rect, 2)
 
-            font_big = pygame.font.SysFont(None, 42)
-            font_sm = pygame.font.SysFont(None, 24)
 
-            title = font_big.render("Work in Progress", True, pygame.Color("#ffffff"))
-            subtitle = font_sm.render("Touch the goal to enter a new dungeon", True, pygame.Color("#dddddd"))
-
-            surface.blit(title, (self.screen_w // 2 - title.get_width() // 2, 90))
-            surface.blit(subtitle, (self.screen_w // 2 - subtitle.get_width() // 2, 130))
 
     def invalidate_surface(self) -> None:
         self._surface = None

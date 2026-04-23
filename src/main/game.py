@@ -10,8 +10,9 @@ from main.keybindings import KeyBindings
 from main.weapon import WEAPON_CATALOGUE
 from main.music_manager import MusicManager
 from main.sound_manager import SoundManager
-from main.entities import Coin
+from main.entities import Coin, Boss
 from main.ui import RoomTransition
+from main.room import RoomType
 
 
 
@@ -77,7 +78,7 @@ class Game:
             floor_number = self.current_floor
         )
         self.dungeon = gen.generate()
-
+        self.enemy_bullets = []
         self.room_coins: list[Coin] = []
 
         # Place player at the center of the start room
@@ -162,7 +163,12 @@ class Game:
 
             walls = self.dungeon.current_room.all_walls
             enemies = self.dungeon.current_room.enemies
+            room = self.dungeon.current_room
             flawless_drop_chance = 1.0 if self.Player.room_flawless else 0.33
+
+            if room.type == RoomType.BOSS and room.boss:
+                room.boss.update(dt, self.Player.pos, self.enemy_bullets)
+
 
             for enemy in enemies:
                 if enemy.alive and enemy.hitbox.colliderect(self.Player.hitbox):
@@ -170,6 +176,12 @@ class Game:
 
             for bullet in self.Player.bullets:
                 bullet.update(dt, walls)
+
+                if room.type == RoomType.BOSS and room.boss:
+                    if bullet.alive and boss.rect.colliderect(bullet.rect):
+                        room.boss.take_damage(self.Player.damage)
+                        bullet.alive = False
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = bullet.try_hit(enemy)
@@ -180,9 +192,22 @@ class Game:
                             coin = enemy.try_drop_coin(flawless_drop_chance)
                             if coin:
                                 self.room_coins.append(coin)
-            
+            # enemy bullets
+            for b in self.enemy_bullets:
+                b.update(dt, walls)
+                player_center = pygame.Vector2(self.Player.hitbox.center)
+                if b.pos.distance_to(player_center) < (b.radius + self.Player.hitbox.width // 2):
+                    self.Player.take_damage(b.damage)
+                    b.alive = False
+
             for mh in self.Player.melee_hitboxes:
                 mh.update(dt)
+
+                if room.type == RoomType.BOSS and room.boss:
+                    hit = mh.try_hit(boss)
+                    if hit: 
+                        room.boss.take_damage(self.Player.damage)
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = mh.try_hit(enemy)
@@ -197,9 +222,15 @@ class Game:
             self.Player.bullets = [b for b in self.Player.bullets if b.alive]
             self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
 
-            # Persistent aura damage (always-on while aura weapon is equipped)
+            # aura damage 
             aura = self.Player._active_aura
             if aura is not None and aura.alive:
+                if room.type == RoomType.BOSS and room.boss:
+                    hit = aura.try_hit(room.boss)
+                    if hit:
+                        pass
+
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = aura.try_hit(enemy)
@@ -210,6 +241,7 @@ class Game:
                             coin = enemy.try_drop_coin(flawless_drop_chance)
                             if coin:
                                 self.room_coins.append(coin)
+           
 
             self.dungeon.current_room.refresh_clear_state()
 
@@ -223,9 +255,12 @@ class Game:
             if self.Player.is_dead:
                 self.state = "gameover"
 
-            if self.dungeon.current_room.boss_goal_reached(self.Player.hitbox):
-                self._advance_to_next_dungeon()
-                return
+            if room.type == RoomType.BOSS:
+                if not room.boss.alive:
+                    if self.dungeon.current_room.boss_goal_reached(self.Player.hitbox):
+                        self._advance_to_next_dungeon()
+                        return
+           
 
     def _on_room_enter(self) -> None:
         self.room_coins = []
@@ -235,6 +270,10 @@ class Game:
         # Reset the persistent aura so it re-initialises in the new room
         self.Player._active_aura = None
         self.Player.start_room_protection()
+
+        room = self.dungeon.current_room
+        if room.type == RoomType.BOSS and room.boss is None:
+            room.boss = Boss(self.w // 2, 120)
 
 # ------------------------------ Draw ---------------------------------------- #
     def draw(self) -> None:
@@ -256,6 +295,15 @@ class Game:
     def _draw_playing(self) -> None:
         # Draw the active room first, then the player on top for layering
         self.dungeon.draw(self.screen, debug=self.debug)
+        room = self.dungeon.current_room
+        room.draw(self.screen)
+
+        if room.type == RoomType.BOSS and room.boss:
+            room.boss.draw(self.screen)
+
+        for b in self.enemy_bullets:
+            b.draw(self.screen)
+
         for coin in self.room_coins:
             coin.draw(self.screen)
         self.Player.draw(self.screen, debug = self.debug)
@@ -263,6 +311,8 @@ class Game:
         self.player_hud.draw(self.screen, self.Player)
         self._draw_dungeon_debug()
         self.room_transition.draw(self.screen)
+
+    
 
     def _draw_title(self) -> None:
         action = self.title_screen.draw(self.screen, self.events)

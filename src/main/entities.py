@@ -3,7 +3,7 @@ import pygame
 import heapq
 import math
 import random
-from typing import Optional
+from typing import Optional, List
 
 
 
@@ -586,7 +586,81 @@ class AuraHitbox:
             1,
         )
         surface.blit(inner_surf, (cx - r - 2, cy - r - 2))
+    
+    def colliderect(self, other_rect: pygame.Rect) -> bool:
+        return self.rect.colliderect(other_rect)
 
 
 
+# --- the big bad boss ---
+STATE_HOVER = "hover"
+STATE_SQUASH = "squash"
+STATE_SLAM = "slam"
+STATE_RECOVER = "recover"
+STATE_DEAD = "dead"
 
+
+
+class Boss:
+    def __init__(self, x: float, y: float):
+        self.pos = pygame.Vector2(x, y)
+        self.w, self.h = 64, 64
+        self.rect = pygame.Rect(x - 32, y - 32, self.w, self.h)
+        self.hitbox = self.rect.copy()
+        
+        self.hp = 500
+        self.max_hp = 500
+        self.alive = True
+        
+        self.shoot_timer = 0.0
+        self.shoot_delay = 1.5  # Seconds between triple shots
+
+    def update(self, dt: float, player_pos: pygame.Vector2, bullets_list: list):
+        if not self.alive:
+            return
+
+        # Simple Triple Shot Logic
+        self.shoot_timer += dt
+        if self.shoot_timer >= self.shoot_delay:
+            self.shoot_timer = 0
+            self._triple_shot(player_pos, bullets_list)
+
+    def _triple_shot(self, player_pos, bullets_list):
+        direction = (player_pos - self.pos)
+        if direction.length_squared() > 0:
+            direction = direction.normalize()
+        else:
+            direction = pygame.Vector2(0, 1)
+
+        # Create 3 bullets: Center, -20 degrees, +20 degrees
+        angles = [0, -20, 20]
+        for angle in angles:
+            dir_vec = direction.rotate(angle)
+            bullets_list.append(Bullet(
+                pos=pygame.Vector2(self.pos),
+                direction=dir_vec,
+                speed=200,
+                damage=10,
+                max_range=800,
+                color_key="heavy"
+            ))
+
+    def take_damage(self, amount: int):
+        self.hp -= amount
+        if self.hp <= 0:
+            self.hp = 0
+            self.alive = False
+
+    def draw(self, surface: pygame.Surface):
+        if not self.alive:
+            return
+        
+        # Draw the boss as a simple purple square
+        pygame.draw.rect(surface, pygame.Color("#8e44ad"), self.rect)
+        pygame.draw.rect(surface, pygame.Color("#ffffff"), self.rect, 2)
+        
+        # Simple health bar above the boss
+        bar_width = 64
+        health_width = (self.hp / self.max_hp) * bar_width
+        pygame.draw.rect(surface, (50, 50, 50), (self.rect.x, self.rect.y - 15, bar_width, 8))
+        pygame.draw.rect(surface, (255, 0, 0), (self.rect.x, self.rect.y - 15, health_width, 8))
