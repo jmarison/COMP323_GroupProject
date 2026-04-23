@@ -4,8 +4,15 @@ from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from pathlib import Path
+import os
+BASE_DIR = Path(__file__).parent
 
-_SPRITE_DIR = Path(__file__).parent / "assets" / "sprites"
+ASSETS_DIR = BASE_DIR / "assets" 
+IMAGE_DIR = ASSETS_DIR / "images"
+SOUND_DIR = ASSETS_DIR / "sounds"
+_SPRITE_DIR = ASSETS_DIR / "sounds"
+
+
 
 
 def _load_sprite(filename: str, size: tuple[int, int] = (32, 32)) -> pygame.Surface | None:

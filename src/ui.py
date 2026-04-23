@@ -222,7 +222,7 @@ class SettingsMenu:
         return None
 
     def _reset_row(self) -> None:
-        from main.keybindings import _DEFAULTS
+        from keybindings import _DEFAULTS
         group, action, _ = _BIND_ROWS[self.selected]
         default_key = _DEFAULTS[group][action]
         # Only reset if the default isn't already taken by something else
@@ -363,7 +363,9 @@ class PlayerHUD:
         self._font_md: pygame.font.Font | None = None
 
         import os
-        BASE_DIR = os.path.dirname(__file__)  
+        from pathlib import Path
+
+        BASE_DIR = Path(__file__).parent.parent 
 
         self.coin_empty = pygame.image.load(os.path.join(BASE_DIR, "assets", "sprites", "coin_health.png")).convert_alpha()
 

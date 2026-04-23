@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import pygame
 
-_MUSIC_DIR = Path(__file__).parent / "assets" / "music"
+_MUSIC_DIR = Path(__file__).parent.parent / "assets" / "music"
 
 _TRACKS: dict[str, str] = {
     "title": str(_MUSIC_DIR / "title_music.mp3"),

@@ -3,16 +3,16 @@ from dataclasses import dataclass, field
 import random
 import pygame
 import copy
-from main.player import Player
-from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
-from main.keybindings import KeyBindings
-from main.weapon import WEAPON_CATALOGUE
-from main.music_manager import MusicManager
-from main.sound_manager import SoundManager
-from main.entities import Coin, Boss
-from main.ui import RoomTransition
-from main.room import RoomType
+from src.player import Player
+from src.dungeon_generator import DungeonGenerator
+from src.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
+from src.keybindings import KeyBindings
+from src.weapon import WEAPON_CATALOGUE
+from src.music_manager import MusicManager
+from src.sound_manager import SoundManager
+from src.entities import Coin, Boss
+from src.ui import RoomTransition
+from src.room import RoomType
 
 
 
@@ -166,7 +166,7 @@ class Game:
             room = self.dungeon.current_room
             flawless_drop_chance = 1.0 if self.Player.room_flawless else 0.33
 
-            if room.type == RoomType.BOSS and room.boss:
+            if room.type == RoomType.BOSS and room.boss and room.boss.alive:
                 room.boss.update(dt, self.Player.pos, self.enemy_bullets)
 
 
@@ -175,12 +175,14 @@ class Game:
                     self.Player.take_damage(enemy.damage)
 
             for bullet in self.Player.bullets:
+                if not bullet.alive:
+                    continue
                 bullet.update(dt, walls)
 
                 if room.type == RoomType.BOSS and room.boss:
-                    if bullet.alive and boss.rect.colliderect(bullet.rect):
-                        room.boss.take_damage(self.Player.damage)
-                        bullet.alive = False
+                    hit = bullet.try_hit(room.boss)
+                    if hit:
+                        pass
 
                 for enemy in enemies:
                     if enemy.alive:
@@ -204,9 +206,9 @@ class Game:
                 mh.update(dt)
 
                 if room.type == RoomType.BOSS and room.boss:
-                    hit = mh.try_hit(boss)
-                    if hit: 
-                        room.boss.take_damage(self.Player.damage)
+                    hit = mh.try_hit(room.boss)
+                    if hit:
+                        pass
 
                 for enemy in enemies:
                     if enemy.alive:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pygame
 import math
-from main.entities import Bullet, MeleeHitbox
+from src.entities import Bullet, MeleeHitbox
 
 
 class WeaponType:

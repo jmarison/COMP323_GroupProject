@@ -5,12 +5,12 @@ import pygame
 from collections import deque
 from typing import Optional
 
-from main.room import Room, RoomType, Direction
-from main.entities import Wall, Hazard, Enemy, Boss
-from main.room_layouts import NORMAL_ROOM_LAYOUTS, MINI_GAME_ROOM_LAYOUTS, WEAPON_SHOP_LAYOUTS
+from src.room import Room, RoomType, Direction
+from src.entities import Wall, Hazard, Enemy, Boss
+from src.room_layouts import NORMAL_ROOM_LAYOUTS, MINI_GAME_ROOM_LAYOUTS, WEAPON_SHOP_LAYOUTS
 
-from main.item import ItemPedestal, ITEM_CATALOGUE
-from main.weapon import WEAPON_CATALOGUE
+from src.item import ItemPedestal, ITEM_CATALOGUE
+from src.weapon import WEAPON_CATALOGUE
 
 
 # tunable values

@@ -2,9 +2,9 @@ from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
-from main.entities import Wall, Hazard, Enemy, _build_nav_grid
-from main.item import ItemPedestal
-from main.weapon import Weapon
+from src.entities import Wall, Hazard, Enemy, _build_nav_grid
+from src.item import ItemPedestal
+from src.weapon import Weapon
 import pygame
 
 
@@ -294,10 +294,7 @@ class Room:
             pygame.draw.rect(surf, floor_col, door.rect)  # erase wall
             pygame.draw.rect(surf, COL_DOOR_FRAME, door.rect, 2)    # frame outline
 
-        if pygame.font.get_init():
-            font  = pygame.font.SysFont(None, 28)
-            label = font.render(f"[{self.type.value.upper()}]  id:{self.id}", True, COL_LABEL)
-            surf.blit(label, (wt + 8, wt + 8))
+
 
         return surf
 

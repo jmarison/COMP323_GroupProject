@@ -1,17 +1,11 @@
 from __future__ import annotations
-"""
-Each layout is a dict with keys:
-    "walls"    : list of (x, y, w, h)
-    "hazards"  : list of (x, y, w, h, hazard_type)
-    "enemies"  : list of (x, y, enemy_type)
-    "pedestals": list of (x, y)  - for item and weapon rooms
-"""
+from src.entities import HazardType, EnemyType
 
-from main.entities import HazardType, EnemyType
-#hazard types
+
+# hazard types
 S = HazardType.SPIKE
 L = HazardType.LAVA
-#enemy types
+# enemy types
 BA = EnemyType.BASIC
 FA = EnemyType.FAST
 HE = EnemyType.HEAVY
