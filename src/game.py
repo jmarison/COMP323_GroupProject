@@ -3,14 +3,17 @@ from dataclasses import dataclass, field
 import random
 import pygame
 import copy
-from main.player import Player
-from main.dungeon_generator import DungeonGenerator
-from main.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
-from main.keybindings import KeyBindings
-from main.weapon import WEAPON_CATALOGUE
-from main.music_manager import MusicManager
-from main.sound_manager import SoundManager
-from main.entities import Coin
+from src.player import Player
+from src.dungeon_generator import DungeonGenerator
+from src.ui import TitleScreen, SettingsMenu, ItemHUD, PlayerHUD, PauseMenu
+from src.keybindings import KeyBindings
+from src.weapon import WEAPON_CATALOGUE
+from src.music_manager import MusicManager
+from src.sound_manager import SoundManager
+from src.entities import Coin, Boss
+from src.ui import RoomTransition
+from src.room import RoomType
+from config import FONT_PATH
 
 
 
@@ -21,6 +24,7 @@ class Palette:
 
 PALETTE = Palette()
 
+transition_duration = 0.3
 
 class Game:
 
@@ -29,7 +33,7 @@ class Game:
         self.w = 960
         self.h = 540
         self.screen = pygame.display.set_mode((self.w, self.h))
-        self.font = pygame.font.SysFont(None, 24)
+        self.font = pygame.font.Font(FONT_PATH, 24)
 
         self.music = MusicManager(volume=0.1)
         self.music.play("title")
@@ -53,6 +57,7 @@ class Game:
         self.item_hud = ItemHUD(self.w, self.h)
         self.player_hud = PlayerHUD(self.w, self.h)
 
+        self.room_transition = RoomTransition(self.w, self.h, transition_duration)
         self.events: list[pygame.event.Event] = []
         self._reset_run()
 
@@ -68,13 +73,13 @@ class Game:
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
-            seed             = self.seed,
+            seed = self.seed,
             num_normal_rooms = 6,
-            screen_size      = (self.w, self.h),
+            screen_size = (self.w, self.h),
             floor_number = self.current_floor
         )
         self.dungeon = gen.generate()
-
+        self.enemy_bullets = []
         self.room_coins: list[Coin] = []
 
         # Place player at the center of the start room
@@ -129,26 +134,57 @@ class Game:
  # ------------------------------ Update ---------------------------------------- #
 
     def update(self, dt: float) -> None:
+        self.room_transition.update(dt)
        
         if self.state == "playing":
+            #prevents anything from moving during transitions
+            if self.room_transition.is_active():
+                return
+            
             keys = pygame.key.get_pressed()
             self.Player.update(dt, keys, self.events)
             self.Player.wall_collisions(self.dungeon.current_room.all_walls)
 
-            changed = self.dungeon.update(self.Player, dt)
-            if changed:
-                self._on_room_enter()
+            result = self.dungeon.current_room.check_transition(self.Player.hitbox)
+            if result is not None:
+                direction, target_id = result
+
+                def change_room():
+                    self.dungeon.current_id = target_id
+                    self.Player.pos = self.dungeon._entry_position(direction.opposite())
+                    self.Player.rect.center = (round(self.Player.pos.x), round(self.Player.pos.y))
+                    self.Player.hitbox.center = self.Player.rect.center
+                    self.dungeon.current_room.on_player_enter()
+                    self._on_room_enter()
+                
+                        # Start the transition
+                self.room_transition.start(on_peak_callback=change_room)
+                return
+            self.dungeon.current_room.update(dt, self.Player)
 
             walls = self.dungeon.current_room.all_walls
             enemies = self.dungeon.current_room.enemies
+            room = self.dungeon.current_room
             flawless_drop_chance = 1.0 if self.Player.room_flawless else 0.33
+
+            if room.type == RoomType.BOSS and room.boss and room.boss.alive:
+                room.boss.update(dt, self.Player.pos, self.enemy_bullets)
+
 
             for enemy in enemies:
                 if enemy.alive and enemy.hitbox.colliderect(self.Player.hitbox):
                     self.Player.take_damage(enemy.damage)
 
             for bullet in self.Player.bullets:
+                if not bullet.alive:
+                    continue
                 bullet.update(dt, walls)
+
+                if room.type == RoomType.BOSS and room.boss:
+                    hit = bullet.try_hit(room.boss)
+                    if hit:
+                        pass
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = bullet.try_hit(enemy)
@@ -159,9 +195,22 @@ class Game:
                             coin = enemy.try_drop_coin(flawless_drop_chance)
                             if coin:
                                 self.room_coins.append(coin)
-            
+            # enemy bullets
+            for b in self.enemy_bullets:
+                b.update(dt, walls)
+                player_center = pygame.Vector2(self.Player.hitbox.center)
+                if b.pos.distance_to(player_center) < (b.radius + self.Player.hitbox.width // 2):
+                    self.Player.take_damage(b.damage)
+                    b.alive = False
+
             for mh in self.Player.melee_hitboxes:
                 mh.update(dt)
+
+                if room.type == RoomType.BOSS and room.boss:
+                    hit = mh.try_hit(room.boss)
+                    if hit:
+                        pass
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = mh.try_hit(enemy)
@@ -176,9 +225,15 @@ class Game:
             self.Player.bullets = [b for b in self.Player.bullets if b.alive]
             self.Player.melee_hitboxes = [mh for mh in self.Player.melee_hitboxes if mh.alive]
 
-            # Persistent aura damage (always-on while aura weapon is equipped)
+            # aura damage 
             aura = self.Player._active_aura
             if aura is not None and aura.alive:
+                if room.type == RoomType.BOSS and room.boss:
+                    hit = aura.try_hit(room.boss)
+                    if hit:
+                        pass
+
+
                 for enemy in enemies:
                     if enemy.alive:
                         hit = aura.try_hit(enemy)
@@ -189,6 +244,7 @@ class Game:
                             coin = enemy.try_drop_coin(flawless_drop_chance)
                             if coin:
                                 self.room_coins.append(coin)
+           
 
             self.dungeon.current_room.refresh_clear_state()
 
@@ -202,9 +258,12 @@ class Game:
             if self.Player.is_dead:
                 self.state = "gameover"
 
-            if self.dungeon.current_room.boss_goal_reached(self.Player.hitbox):
-                self._advance_to_next_dungeon()
-                return
+            if room.type == RoomType.BOSS:
+                if not room.boss.alive:
+                    if self.dungeon.current_room.boss_goal_reached(self.Player.hitbox):
+                        self._advance_to_next_dungeon()
+                        return
+           
 
     def _on_room_enter(self) -> None:
         self.room_coins = []
@@ -214,6 +273,10 @@ class Game:
         # Reset the persistent aura so it re-initialises in the new room
         self.Player._active_aura = None
         self.Player.start_room_protection()
+
+        room = self.dungeon.current_room
+        if room.type == RoomType.BOSS and room.boss is None:
+            room.boss = Boss(self.w // 2, 120)
 
 # ------------------------------ Draw ---------------------------------------- #
     def draw(self) -> None:
@@ -235,12 +298,24 @@ class Game:
     def _draw_playing(self) -> None:
         # Draw the active room first, then the player on top for layering
         self.dungeon.draw(self.screen, debug=self.debug)
+        room = self.dungeon.current_room
+        room.draw(self.screen)
+
+        if room.type == RoomType.BOSS and room.boss:
+            room.boss.draw(self.screen)
+
+        for b in self.enemy_bullets:
+            b.draw(self.screen)
+
         for coin in self.room_coins:
             coin.draw(self.screen)
         self.Player.draw(self.screen, debug = self.debug)
         self.item_hud.draw(self.screen, self.Player.items)
         self.player_hud.draw(self.screen, self.Player)
         self._draw_dungeon_debug()
+        self.room_transition.draw(self.screen)
+
+    
 
     def _draw_title(self) -> None:
         action = self.title_screen.draw(self.screen, self.events)
@@ -269,10 +344,10 @@ class Game:
         overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
         self.screen.blit(overlay, (0, 0))
-        go_font = pygame.font.SysFont(None, 72)
+        go_font = pygame.font.Font(FONT_PATH, 72)
         text = go_font.render("GAME OVER", True, pygame.Color("#ff4444"))
         self.screen.blit(text, (self.w // 2 - text.get_width() // 2, self.h // 2 - text.get_height() // 2))
-        hint_font = pygame.font.SysFont(None, 28)
+        hint_font = pygame.font.Font(FONT_PATH, 28)
         hint = hint_font.render("SPACE / Y  —  New Run", True, pygame.Color("#aaaaaa"))
         self.screen.blit(hint, (self.w // 2 - hint.get_width() // 2, self.h // 2 + 50))
 

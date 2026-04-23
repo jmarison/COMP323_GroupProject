@@ -2,6 +2,8 @@ from __future__ import annotations
 import pygame
 import math
 
+from config import FONT_PATH
+
 
 
 # ------------------ TITLE ---------------------------
@@ -28,7 +30,7 @@ class TitleScreen:
         screen.fill(pygame.Color("#1a1a2e"))
 
         # Title
-        title_font = pygame.font.SysFont(None, 64)
+        title_font = pygame.font.Font(FONT_PATH, 64)
         title_surf = title_font.render("Consumed with Greed", True, pygame.Color("#e0e0e0"))
         screen.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, self.h // 6))
 
@@ -222,7 +224,7 @@ class SettingsMenu:
         return None
 
     def _reset_row(self) -> None:
-        from main.keybindings import _DEFAULTS
+        from keybindings import _DEFAULTS
         group, action, _ = _BIND_ROWS[self.selected]
         default_key = _DEFAULTS[group][action]
         # Only reset if the default isn't already taken by something else
@@ -276,11 +278,11 @@ class ItemHUD:
     def __init__(self, screen_w: int, screen_h: int) -> None:
         self.screen_w = screen_w
         self.screen_h = screen_h
-        self._font = None         
+        self._font = pygame.font.Font(FONT_PATH, 22)         
 
     def draw(self, surface: pygame.Surface, items: list) -> None:
         if self._font is None:
-            self._font = pygame.font.SysFont(None, 16)
+            self.font = pygame.font.Font(FONT_PATH, 22)
 
         num_items= len(items)
         num_cols = _HUD_COLS
@@ -363,7 +365,9 @@ class PlayerHUD:
         self._font_md: pygame.font.Font | None = None
 
         import os
-        BASE_DIR = os.path.dirname(__file__)  
+        from pathlib import Path
+
+        BASE_DIR = Path(__file__).parent.parent 
 
         self.coin_empty = pygame.image.load(os.path.join(BASE_DIR, "assets", "sprites", "coin_health.png")).convert_alpha()
 
@@ -705,3 +709,64 @@ class PauseMenu:
         
         return action
     
+
+# --- Room Transitions ---
+
+class RoomTransition:
+    def __init__(self, screen_w: int, screen_h: int, duration: float = 0.15) -> None:
+        self.screen_w = screen_w
+        self.screen_h = screen_h
+        self.duration = duration  # total duration in seconds
+        self.active = False
+        self.timer = 0.0
+        self._overlay = pygame.Surface((screen_w, screen_h))
+        self._overlay.fill((0, 0, 0))
+        self._room_changed = False  
+        self._change_callback = None 
+    
+    def start(self, on_peak_callback=None) -> None:
+        self.active = True
+        self.timer = 0.0
+        self._room_changed = False
+        self._change_callback = on_peak_callback
+    
+    def update(self, dt: float) -> bool:
+        if not self.active:
+            return False
+        
+        self.timer += dt
+        halfway = self.duration / 2.0
+        
+        if not self._room_changed and self.timer >= halfway:
+            self._room_changed = True
+            if self._change_callback is not None:
+                self._change_callback()
+        
+        if self.timer >= self.duration:
+            self.active = False
+            self.timer = 0.0
+            self._change_callback = None
+            return True 
+        
+        return False 
+    
+    def is_active(self) -> bool:
+        return self.active
+    
+    def draw(self, surface: pygame.Surface) -> None:
+        if not self.active:
+            return
+        
+        halfway = self.duration / 2.0
+        
+        if self.timer < halfway:
+            # fade in
+            progress = self.timer / halfway
+            alpha = int(255 * progress)
+        else:
+            # fade out
+            progress = (self.timer - halfway) / halfway
+            alpha = int(255 * (1.0 - progress))
+        
+        self._overlay.set_alpha(alpha)
+        surface.blit(self._overlay, (0, 0))

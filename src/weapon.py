@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pygame
 import math
-from main.entities import Bullet, MeleeHitbox
+from src.entities import Bullet, MeleeHitbox
 
 
 class WeaponType:
@@ -118,7 +118,7 @@ class Weapon:
 
     def try_attack(self, origin: pygame.Vector2, aim_dir: pygame.Vector2, sound_manager=None) -> list[Bullet] | MeleeHitbox | None:
         if self.wtype == WeaponType.AURA:
-            return None   # aura weapons are always going so they dont need to try
+            return None   # aura weapons are always going 
 
         if self._cooldown > 0:
             return None

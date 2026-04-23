@@ -4,8 +4,18 @@ from enum import Enum, auto
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from pathlib import Path
+from config import FONT_PATH
+import os
 
-_SPRITE_DIR = Path(__file__).parent / "assets" / "sprites"
+
+BASE_DIR = Path(__file__).parent
+
+ASSETS_DIR = BASE_DIR / "assets" 
+IMAGE_DIR = ASSETS_DIR / "images"
+SOUND_DIR = ASSETS_DIR / "sounds"
+_SPRITE_DIR = ASSETS_DIR / "sounds"
+
+
 
 
 def _load_sprite(filename: str, size: tuple[int, int] = (32, 32)) -> pygame.Surface | None:
@@ -319,7 +329,7 @@ class ItemPedestal:
             return
 
         if self._font is None:
-            self._font = pygame.font.SysFont(None, 18)
+            self._font = pygame.font.Font(FONT_PATH, 20)
 
         cx = int(self.pos.x)
         cy = int(self.pos.y)

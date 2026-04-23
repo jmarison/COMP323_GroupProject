@@ -1,8 +1,9 @@
 import pygame
-from main.entities import Bullet, MeleeHitbox, AuraHitbox
-from main.weapon import Weapon, WeaponType
-from main.item import Item, EffectType
-from main.keybindings import KeyBindings
+from pathlib import Path
+from src.entities import Bullet, MeleeHitbox, AuraHitbox
+from src.weapon import Weapon, WeaponType
+from src.item import Item, EffectType
+from src.keybindings import KeyBindings
 
 
 class ControlScheme:
@@ -91,6 +92,9 @@ class Player(pygame.sprite.Sprite):
         self.pos = pygame.Vector2(pos)
         self.aim_dir = pygame.Vector2(1,0)
 
+        ROOT_DIR = Path(__file__).parent.parent
+        sprite_path = str(ROOT_DIR / "assets" / "sprites" / "prototype_character.png")
+
         # --- load animations ---
         anim_map = {
             "idle_down":  (0, 2),
@@ -102,7 +106,9 @@ class Player(pygame.sprite.Sprite):
             "hit":        (6, 2),
             "death":      (10, 3)
         }
-        self.animator = Animator("main/assets/sprites/prototype_character.png", (32, 32), anim_map)
+        
+
+        self.animator = Animator(sprite_path, (32, 32), anim_map)
         self.image = self.animator.get_frame(0) # Initial 
         self.facing_dir = "down"
 
