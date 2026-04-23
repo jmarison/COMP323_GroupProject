@@ -1,8 +1,9 @@
 # [Consumed with Greed] — Postmortem
 
-**Team:** [Money Makers]
-**Members:** [Jacob Marison]
-**Date:** [4.23.26]
+**Team:** [Money Makers] </br>
+**Members:** [Jacob Marison]</br>
+**Date:** [4.23.26]</br>
+**Repo:** https://github.com/jmarison/COMP323_GroupProject.git</br>
 
 ---
 
