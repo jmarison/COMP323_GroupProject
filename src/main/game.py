@@ -11,6 +11,7 @@ from main.weapon import WEAPON_CATALOGUE
 from main.music_manager import MusicManager
 from main.sound_manager import SoundManager
 from main.entities import Coin
+from main.ui import RoomTransition
 
 
 
@@ -21,6 +22,7 @@ class Palette:
 
 PALETTE = Palette()
 
+transition_duration = 0.3
 
 class Game:
 
@@ -53,6 +55,7 @@ class Game:
         self.item_hud = ItemHUD(self.w, self.h)
         self.player_hud = PlayerHUD(self.w, self.h)
 
+        self.room_transition = RoomTransition(self.w, self.h, transition_duration)
         self.events: list[pygame.event.Event] = []
         self._reset_run()
 
@@ -68,9 +71,9 @@ class Game:
 
         # --- Generate a fresh dungeon ---
         gen = DungeonGenerator(
-            seed             = self.seed,
+            seed = self.seed,
             num_normal_rooms = 6,
-            screen_size      = (self.w, self.h),
+            screen_size = (self.w, self.h),
             floor_number = self.current_floor
         )
         self.dungeon = gen.generate()
@@ -129,15 +132,33 @@ class Game:
  # ------------------------------ Update ---------------------------------------- #
 
     def update(self, dt: float) -> None:
+        self.room_transition.update(dt)
        
         if self.state == "playing":
+            #prevents anything from moving during transitions
+            if self.room_transition.is_active():
+                return
+            
             keys = pygame.key.get_pressed()
             self.Player.update(dt, keys, self.events)
             self.Player.wall_collisions(self.dungeon.current_room.all_walls)
 
-            changed = self.dungeon.update(self.Player, dt)
-            if changed:
-                self._on_room_enter()
+            result = self.dungeon.current_room.check_transition(self.Player.hitbox)
+            if result is not None:
+                direction, target_id = result
+
+                def change_room():
+                    self.dungeon.current_id = target_id
+                    self.Player.pos = self.dungeon._entry_position(direction.opposite())
+                    self.Player.rect.center = (round(self.Player.pos.x), round(self.Player.pos.y))
+                    self.Player.hitbox.center = self.Player.rect.center
+                    self.dungeon.current_room.on_player_enter()
+                    self._on_room_enter()
+                
+                        # Start the transition
+                self.room_transition.start(on_peak_callback=change_room)
+                return
+            self.dungeon.current_room.update(dt, self.Player)
 
             walls = self.dungeon.current_room.all_walls
             enemies = self.dungeon.current_room.enemies
@@ -241,6 +262,7 @@ class Game:
         self.item_hud.draw(self.screen, self.Player.items)
         self.player_hud.draw(self.screen, self.Player)
         self._draw_dungeon_debug()
+        self.room_transition.draw(self.screen)
 
     def _draw_title(self) -> None:
         action = self.title_screen.draw(self.screen, self.events)
